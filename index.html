@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assistente CRM</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --ink: #20283a;
+      --muted: #758096;
+      --purple: #6557d9;
+      --line: #edf0f5;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #f5f6fa; }
+    .assistant {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 10;
+      width: min(370px, calc(100vw - 32px));
+      color: var(--ink);
+    }
+    .panel {
+      overflow: hidden;
+      margin-bottom: 14px;
+      border: 1px solid rgba(30, 40, 60, .08);
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 18px 55px rgba(37, 44, 72, .2);
+    }
+    .header {
+      padding: 20px 20px 17px;
+      color: #fff;
+      background: linear-gradient(135deg, #6557d9, #8672ed);
+    }
+    .header-top { display: flex; align-items: center; gap: 12px; }
+    .avatar {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 15px;
+      background: rgba(255,255,255,.17);
+      font-size: 23px;
+    }
+    .heading { flex: 1; }
+    .heading strong { display: block; font-size: 15px; }
+    .online { margin-top: 4px; color: #e6e2ff; font-size: 11px; }
+    .online:before {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      margin-right: 6px;
+      border-radius: 50%;
+      background: #72e2b0;
+      content: "";
+    }
+    .close {
+      border: 0;
+      color: white;
+      background: transparent;
+      cursor: pointer;
+      font-size: 21px;
+      opacity: .85;
+    }
+    .welcome { margin: 17px 0 0; color: #f0eeff; font-size: 13px; line-height: 1.5; }
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .summary strong { color: var(--ink); }
+    .tasks { max-height: 345px; overflow-y: auto; padding: 5px 16px 10px; }
+    .task {
+      display: block;
+      padding: 14px 4px;
+      border-bottom: 1px solid var(--line);
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .task:last-child { border-bottom: 0; }
+    .task:hover .task-title, .task:focus-visible .task-title { color: var(--purple); }
+    .task:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; border-radius: 8px; }
+    .task-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .client { font-size: 12px; font-weight: 700; }
+    .badge { padding: 4px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+    .urgent { color: #bb3c48; background: #fff0f0; }
+    .soon { color: #9a6500; background: #fff7df; }
+    .task-title { margin: 7px 0 5px; font-size: 13px; font-weight: 600; }
+    .meta, .note { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .note { margin-top: 7px; padding: 8px 9px; border-radius: 9px; background: #f6f5ff; color: #554b9d; }
+    .actions { display: flex; gap: 8px; padding: 12px 16px 16px; }
+    .actions button {
+      flex: 1;
+      padding: 10px;
+      border: 0;
+      border-radius: 10px;
+      background: #f1f0ff;
+      color: var(--purple);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .actions button:hover { background: #e7e4ff; }
+    .demo { padding: 0 16px 13px; color: #9aa2b2; text-align: center; font-size: 10px; }
+    .robot {
+      position: relative;
+      display: flex;
+      width: 62px;
+      height: 62px;
+      margin-left: auto;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid #fff;
+      border-radius: 22px;
+      background: linear-gradient(145deg, #796beb, #5748ca);
+      box-shadow: 0 8px 25px rgba(75, 61, 180, .38);
+      color: white;
+      cursor: pointer;
+      font-size: 30px;
+    }
+    .robot:hover { transform: translateY(-2px); }
+    .count {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      display: grid;
+      width: 21px;
+      height: 21px;
+      place-items: center;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: #f04f68;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    [hidden] { display: none !important; }
+    @media (max-width: 480px) {
+      .assistant { right: 16px; bottom: 16px; }
+      .tasks { max-height: 42vh; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="assistant" aria-label="Assistente de tarefas CRM">
+    <section class="panel" id="panel" aria-live="polite">
+      <header class="header">
+        <div class="header-top">
+          <div class="avatar" aria-hidden="true">🤖</div>
+          <div class="heading">
+            <strong>Assistente CRM</strong>
+            <div class="online">Resumo do dia</div>
+          </div>
+          <button class="close" id="close" aria-label="Minimizar assistente">×</button>
+        </div>
+        <p class="welcome">Oi! A lista ficará disponível quando o backend estiver conectado à API do CRM.</p>
+      </header>
+            <div class="summary"><span>Aguardando conexão com a API do CRM</span></div>
+      <div class="tasks">
+        <p class="meta">Nenhuma tarefa foi carregada. Configure a API do CRM no backend para exibir dados reais.</p>
+      </div>
+            <div class="actions">
+        <button id="acknowledge">Entendi</button>
+      </div>
+      <div class="demo">Aguardando configuração da API do CRM</div>
+    </section>
+        <button class="robot" id="toggle" aria-label="Abrir assistente">
+      🤖
+    </button>
+  </aside>
+  <script>
+    var panel = document.getElementById("panel");
+    var taskLinks = document.querySelectorAll(".task");
+    for (var i = 0; i < taskLinks.length; i++) {
+      taskLinks[i].addEventListener("click", function (event) {
+        event.preventDefault();
+        var recordUrl = this.getAttribute("data-record-url");
+        if (recordUrl && /^https?:\/\//i.test(recordUrl)) {
+          window.location.href = recordUrl;
+        } else {
+          window.alert("O link do registro ainda não foi configurado. Conecte o CRM para abrir o contrato relacionado.");
+        }
+      });
+    }
+    document.getElementById("close").addEventListener("click", function () { panel.hidden = true; });
+    document.getElementById("toggle").addEventListener("click", function () { panel.hidden = !panel.hidden; });
+    document.getElementById("acknowledge").addEventListener("click", function () { panel.hidden = true; });
+    
+  </script>
+</body>
+</html>
