@@ -39,6 +39,10 @@ function render(data){
  $("metrics").innerHTML=[["total","Tarefas"],["atrasadas","Atrasadas"],["prioridade_alta","Prioridade alta"]].map(([k,l])=>'<div class="metric"><b>'+Number(s[k]||0)+'</b><span>'+l+'</span></div>').join("");
  const groups=[["Atrasadas",data.lists?.atrasadas],["Vencem hoje",data.lists?.vencem_hoje],["Prioridade alta",data.lists?.prioridade_alta]];
  $("content").innerHTML=groups.map(([name,items])=>'<div class="section-title">'+name+' ('+(items||[]).length+')</div>'+((items||[]).length?items.map(t=>'<article class="task"><b>'+esc(t.cliente)+' · '+esc(t.titulo)+'</b><span class="badge">'+esc(t.prioridade)+'</span><p>Responsável: '+esc(t.responsavel)+' · Prazo: '+esc(t.vencimento||"não informado")+' · Status: '+esc(t.status)+'</p>'+(t.observacao?'<p>'+esc(t.observacao)+'</p>':'')+'</article>').join(""):'<p class="task">Nenhum registro.</p>')).join("");
+ const notes=data.notes||[];
+ const notesSection=document.createElement("section");
+ notesSection.innerHTML='<div class="section-title">Anotações do CRM ('+notes.length+')</div>'+(notes.length?notes.map(n=>'<article class="task"><b>'+esc(n.contato)+'</b><p>'+esc(n.texto)+'</p></article>').join(""):'<p class="task">Nenhuma anotação registrada.</p>');
+ $("content").appendChild(notesSection);
 }
 async function refresh(){
  $("status").textContent="Atualizando…";
