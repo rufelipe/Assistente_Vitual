@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: assistente-virtual
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    healthCheckPath: /healthz
+    envVars:
+      - key: CRM_API_URL
+        value: https://salesforceteste.vercel.app
+      - key: PYTHON_VERSION
+        value: 3.12.7
