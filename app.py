@@ -4,7 +4,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 from crm_api import CRMRestClient, CRM_API_URL
 
-app = Flask(__name__, static_folder=".", static_url_path="")
+app = Flask(__name__, static_folder=None)
 CRM_URL = os.environ.get("CRM_API_URL", CRM_API_URL)
 TOKEN = os.environ.get("CRM_ACCESS_TOKEN", "")
 client = CRMRestClient(CRM_URL, TOKEN)
