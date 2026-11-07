@@ -1,200 +1,62 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Assistente CRM</title>
-  <style>
-    :root {
-      color-scheme: light;
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --ink: #20283a;
-      --muted: #758096;
-      --purple: #6557d9;
-      --line: #edf0f5;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: #f5f6fa; }
-    .assistant {
-      position: fixed;
-      right: 24px;
-      bottom: 24px;
-      z-index: 10;
-      width: min(370px, calc(100vw - 32px));
-      color: var(--ink);
-    }
-    .panel {
-      overflow: hidden;
-      margin-bottom: 14px;
-      border: 1px solid rgba(30, 40, 60, .08);
-      border-radius: 20px;
-      background: #fff;
-      box-shadow: 0 18px 55px rgba(37, 44, 72, .2);
-    }
-    .header {
-      padding: 20px 20px 17px;
-      color: #fff;
-      background: linear-gradient(135deg, #6557d9, #8672ed);
-    }
-    .header-top { display: flex; align-items: center; gap: 12px; }
-    .avatar {
-      display: grid;
-      width: 42px;
-      height: 42px;
-      place-items: center;
-      border: 1px solid rgba(255,255,255,.35);
-      border-radius: 15px;
-      background: rgba(255,255,255,.17);
-      font-size: 23px;
-    }
-    .heading { flex: 1; }
-    .heading strong { display: block; font-size: 15px; }
-    .online { margin-top: 4px; color: #e6e2ff; font-size: 11px; }
-    .online:before {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      margin-right: 6px;
-      border-radius: 50%;
-      background: #72e2b0;
-      content: "";
-    }
-    .close {
-      border: 0;
-      color: white;
-      background: transparent;
-      cursor: pointer;
-      font-size: 21px;
-      opacity: .85;
-    }
-    .welcome { margin: 17px 0 0; color: #f0eeff; font-size: 13px; line-height: 1.5; }
-    .summary {
-      display: flex;
-      justify-content: space-between;
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .summary strong { color: var(--ink); }
-    .tasks { max-height: 345px; overflow-y: auto; padding: 5px 16px 10px; }
-    .task {
-      display: block;
-      padding: 14px 4px;
-      border-bottom: 1px solid var(--line);
-      color: inherit;
-      text-decoration: none;
-      cursor: pointer;
-    }
-    .task:last-child { border-bottom: 0; }
-    .task:hover .task-title, .task:focus-visible .task-title { color: var(--purple); }
-    .task:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; border-radius: 8px; }
-    .task-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .client { font-size: 12px; font-weight: 700; }
-    .badge { padding: 4px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; white-space: nowrap; }
-    .urgent { color: #bb3c48; background: #fff0f0; }
-    .soon { color: #9a6500; background: #fff7df; }
-    .task-title { margin: 7px 0 5px; font-size: 13px; font-weight: 600; }
-    .meta, .note { color: var(--muted); font-size: 11px; line-height: 1.5; }
-    .note { margin-top: 7px; padding: 8px 9px; border-radius: 9px; background: #f6f5ff; color: #554b9d; }
-    .actions { display: flex; gap: 8px; padding: 12px 16px 16px; }
-    .actions button {
-      flex: 1;
-      padding: 10px;
-      border: 0;
-      border-radius: 10px;
-      background: #f1f0ff;
-      color: var(--purple);
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .actions button:hover { background: #e7e4ff; }
-    .demo { padding: 0 16px 13px; color: #9aa2b2; text-align: center; font-size: 10px; }
-    .robot {
-      position: relative;
-      display: flex;
-      width: 62px;
-      height: 62px;
-      margin-left: auto;
-      align-items: center;
-      justify-content: center;
-      border: 3px solid #fff;
-      border-radius: 22px;
-      background: linear-gradient(145deg, #796beb, #5748ca);
-      box-shadow: 0 8px 25px rgba(75, 61, 180, .38);
-      color: white;
-      cursor: pointer;
-      font-size: 30px;
-    }
-    .robot:hover { transform: translateY(-2px); }
-    .count {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      display: grid;
-      width: 21px;
-      height: 21px;
-      place-items: center;
-      border: 2px solid #fff;
-      border-radius: 50%;
-      background: #f04f68;
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-    }
-    [hidden] { display: none !important; }
-    @media (max-width: 480px) {
-      .assistant { right: 16px; bottom: 16px; }
-      .tasks { max-height: 42vh; }
-    }
-  </style>
-</head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assistente Virtual · Salesforce</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#20283a;background:#f4f5fa}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}.assistant{position:fixed;right:24px;bottom:24px;width:min(410px,calc(100vw - 28px));z-index:5}
+.panel{background:#fff;border:1px solid #e8eaf1;border-radius:20px;overflow:hidden;box-shadow:0 18px 55px #252c482e}
+header{padding:18px 20px;color:#fff;background:linear-gradient(135deg,#6557d9,#8672ed)}
+.head{display:flex;align-items:center;gap:12px}.avatar{font-size:25px}.heading{flex:1}.heading strong{display:block;font-size:15px}.status{font-size:11px;color:#e8e4ff;margin-top:4px}
+button{cursor:pointer;border:0}.close{background:none;color:#fff;font-size:22px}.welcome{font-size:12px;line-height:1.5;color:#f1efff;margin:13px 0 0}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:13px 15px;border-bottom:1px solid #edf0f5}
+.metric{padding:9px;background:#f7f7fc;border-radius:10px;text-align:center}.metric b{display:block;font-size:19px}.metric span{font-size:10px;color:#758096}
+.content{max-height:310px;overflow:auto;padding:7px 16px}.section-title{font-size:11px;font-weight:800;color:#6b62bd;margin:12px 0 4px;text-transform:uppercase}
+.task{padding:11px 2px;border-bottom:1px solid #edf0f5}.task b{font-size:12px}.task p{font-size:11px;color:#758096;margin:5px 0 0;line-height:1.5}
+.badge{display:inline-block;margin-left:5px;padding:3px 7px;border-radius:12px;background:#fff1df;color:#966000;font-size:9px}
+.chat{padding:12px 15px;border-top:1px solid #edf0f5}.chat form{display:flex;gap:7px}.chat input{min-width:0;flex:1;border:1px solid #e1e3ec;border-radius:10px;padding:11px;font-size:12px}.chat button,.refresh{background:#6557d9;color:white;border-radius:10px;padding:0 13px;font-size:11px;font-weight:700}
+.answer{font-size:11px;line-height:1.5;color:#514a8c;margin:9px 0 0;white-space:pre-wrap}.footer{padding:0 15px 13px;text-align:center;font-size:10px;color:#9aa2b2}
+.robot{display:flex;width:60px;height:60px;margin:12px 0 0 auto;align-items:center;justify-content:center;border:3px solid #fff;border-radius:21px;background:linear-gradient(145deg,#796beb,#5748ca);box-shadow:0 8px 25px #4b3db45e;color:white;font-size:29px}
+[hidden]{display:none!important}@media(max-width:480px){.assistant{right:14px;bottom:14px}.content{max-height:38vh}}
+</style></head>
 <body>
-  <aside class="assistant" aria-label="Assistente de tarefas CRM">
-    <section class="panel" id="panel" aria-live="polite">
-      <header class="header">
-        <div class="header-top">
-          <div class="avatar" aria-hidden="true">🤖</div>
-          <div class="heading">
-            <strong>Assistente CRM</strong>
-            <div class="online">Resumo do dia</div>
-          </div>
-          <button class="close" id="close" aria-label="Minimizar assistente">×</button>
-        </div>
-        <p class="welcome">Oi! A lista ficará disponível quando o backend estiver conectado à API do CRM.</p>
-      </header>
-            <div class="summary"><span>Aguardando conexão com a API do CRM</span></div>
-      <div class="tasks">
-        <p class="meta">Nenhuma tarefa foi carregada. Configure a API do CRM no backend para exibir dados reais.</p>
-      </div>
-            <div class="actions">
-        <button id="acknowledge">Entendi</button>
-      </div>
-      <div class="demo">Aguardando configuração da API do CRM</div>
-    </section>
-        <button class="robot" id="toggle" aria-label="Abrir assistente">
-      🤖
-    </button>
-  </aside>
-  <script>
-    var panel = document.getElementById("panel");
-    var taskLinks = document.querySelectorAll(".task");
-    for (var i = 0; i < taskLinks.length; i++) {
-      taskLinks[i].addEventListener("click", function (event) {
-        event.preventDefault();
-        var recordUrl = this.getAttribute("data-record-url");
-        if (recordUrl && /^https?:\/\//i.test(recordUrl)) {
-          window.location.href = recordUrl;
-        } else {
-          window.alert("O link do registro ainda não foi configurado. Conecte o CRM para abrir o contrato relacionado.");
-        }
-      });
-    }
-    document.getElementById("close").addEventListener("click", function () { panel.hidden = true; });
-    document.getElementById("toggle").addEventListener("click", function () { panel.hidden = !panel.hidden; });
-    document.getElementById("acknowledge").addEventListener("click", function () { panel.hidden = true; });
-    
-  </script>
-</body>
-</html>
+<aside class="assistant" aria-label="Assistente Virtual">
+<section class="panel" id="panel" aria-live="polite">
+<header><div class="head"><div class="avatar">🤖</div><div class="heading"><strong>Assistente Virtual</strong><div class="status" id="status">Conectando ao Salesforce…</div></div><button class="close" id="close" aria-label="Minimizar">×</button></div>
+<p class="welcome">Olá! Posso ajudar a localizar tarefas, prazos, prioridades e anotações registradas no CRM.</p></header>
+<div class="metrics" id="metrics"><div class="metric"><b>—</b><span>Tarefas</span></div><div class="metric"><b>—</b><span>Atrasadas</span></div><div class="metric"><b>—</b><span>Prioridade alta</span></div></div>
+<div class="content" id="content"><p class="task">Carregando informações do Salesforce…</p></div>
+<div class="chat"><form id="chat-form"><input id="question" autocomplete="off" placeholder="Ex.: quais tarefas estão atrasadas?" aria-label="Pergunte sobre o CRM"><button type="submit">Enviar</button></form><p class="answer" id="answer"></p></div>
+<div class="footer">Dados consultados em tempo real · demonstração sem gravação no CRM</div>
+</section><button class="robot" id="toggle" aria-label="Abrir assistente">🤖</button></aside>
+<script>
+const $=id=>document.getElementById(id);
+const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function render(data){
+ const s=data.summary||{};
+ $("status").textContent="Conectado ao Salesforce";
+ $("metrics").innerHTML=[["total","Tarefas"],["atrasadas","Atrasadas"],["prioridade_alta","Prioridade alta"]].map(([k,l])=>'<div class="metric"><b>'+Number(s[k]||0)+'</b><span>'+l+'</span></div>').join("");
+ const groups=[["Atrasadas",data.lists?.atrasadas],["Vencem hoje",data.lists?.vencem_hoje],["Prioridade alta",data.lists?.prioridade_alta]];
+ $("content").innerHTML=groups.map(([name,items])=>'<div class="section-title">'+name+' ('+(items||[]).length+')</div>'+((items||[]).length?items.map(t=>'<article class="task"><b>'+esc(t.cliente)+' · '+esc(t.titulo)+'</b><span class="badge">'+esc(t.prioridade)+'</span><p>Responsável: '+esc(t.responsavel)+' · Prazo: '+esc(t.vencimento||"não informado")+' · Status: '+esc(t.status)+'</p>'+(t.observacao?'<p>'+esc(t.observacao)+'</p>':'')+'</article>').join(""):'<p class="task">Nenhum registro.</p>')).join("");
+ const notes=data.notes||[];
+ const notesSection=document.createElement("section");
+ notesSection.innerHTML='<div class="section-title">Anotações do CRM ('+notes.length+')</div>'+(notes.length?notes.map(n=>'<article class="task"><b>'+esc(n.contato)+'</b><p>'+esc(n.texto)+'</p></article>').join(""):'<p class="task">Nenhuma anotação registrada.</p>');
+ $("content").appendChild(notesSection);
+}
+async function refresh(){
+ $("status").textContent="Atualizando…";
+ try{const response=await fetch("/api/dashboard");const data=await response.json();if(!response.ok)throw new Error(data.detail||data.error||"Falha ao consultar CRM");render(data);}
+ catch(error){$("status").textContent="Falha na conexão";$("content").innerHTML='<p class="task">'+esc(error.message)+'<br>Verifique se a API Salesforce está disponível.</p>';}
+}
+$("chat-form").addEventListener("submit",async event=>{
+ event.preventDefault();const question=$("question").value.trim();if(!question)return;
+ $("answer").textContent="Consultando Salesforce…";
+ try{const response=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question})});const data=await response.json();if(!response.ok)throw new Error(data.detail||data.error||"Falha na consulta");
+ $("answer").textContent=data.answer+"\n"+(data.results||[]).map(item=>item.titulo?("• "+item.cliente+" — "+item.titulo+" (prazo: "+(item.vencimento||"não informado")+")"):("• "+item.contato+": "+item.texto)).join("\n");
+ }catch(error){$("answer").textContent=error.message;}
+});
+$("close").addEventListener("click",()=>$("panel").hidden=true);
+$("toggle").addEventListener("click",()=>$("panel").hidden=!$("panel").hidden);
+refresh();
+</script></body></html>
