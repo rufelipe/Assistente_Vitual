@@ -1,5 +1,4 @@
 import os
-import re
 from datetime import date, datetime
 from flask import Flask, jsonify, request, send_from_directory
 
@@ -25,7 +24,7 @@ def load_tasks():
             except ValueError:
                 parsed_due = None
         tasks.append({
-            "cliente": item.get("related") or item.get("owner") or "Não informado",
+            "cliente": item.get("related") or "Não informado",
             "titulo": item.get("title") or "Tarefa sem título",
             "responsavel": item.get("owner") or "Não informado",
             "vencimento": parsed_due,
@@ -62,7 +61,7 @@ def dashboard_data():
     overdue = [t for t in open_tasks if t["vencimento"] and t["vencimento"] < today]
     due_today = [t for t in open_tasks if t["vencimento"] == today]
     high = [t for t in open_tasks if str(t["prioridade"]).lower() in ("alta", "high", "urgent", "urgente")]
-    waiting = [t for t in open_tasks if str(t.get("resposta") or "").strip()]
+    waiting = [t for t in open_tasks if any(word in str(t.get("status", "")).lower() for word in ("aguardando", "pendente", "waiting", "pending"))]
     return {
         "tasks": tasks, "notes": notes,
         "summary": {"total": len(tasks), "abertas": len(open_tasks),
@@ -133,7 +132,7 @@ def chat():
     elif any(word in q for word in ("prioridade", "urgente", "alta")):
         label, selected = "Tarefas de prioridade alta", lists["prioridade_alta"]
     elif any(word in q for word in ("resposta", "retorno", "aguardando")):
-        label, selected = "Tarefas com informação de resposta registrada", lists["aguardando_resposta"]
+        label, selected = "Tarefas com status de espera ou pendência", lists["aguardando_resposta"]
     elif any(word in q for word in ("anota", "observa", "nota")):
         label, selected = "Anotações do Salesforce", data["notes"]
     else:
