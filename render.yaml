@@ -1,0 +1,5 @@
+services:
+  - type: web
+    name: assistente-virtual-front
+    runtime: static
+    staticPublishPath: .
