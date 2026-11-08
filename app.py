@@ -18,10 +18,19 @@ def get_notes():
     data = crm().get_records("/api/notes")
     return data if isinstance(data, list) else []
 
-def answer(message, supplied_tasks=None):
+def answer(message, supplied_tasks=None, supplied_notes=None):
+    from datetime import date, datetime
     text = (message or "").strip().lower()
     tasks = supplied_tasks if isinstance(supplied_tasks, list) else get_tasks()
-    notes = get_notes()
+    notes = supplied_notes if isinstance(supplied_notes, list) else get_notes()
+
+    def is_overdue(task):
+        try:
+            due = datetime.strptime(str(task.get("due", ""))[:10], "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return False
+        status = str(task.get("status", "")).strip().lower()
+        return due < date.today() and status not in ("concluída", "concluida", "completed", "done")
 
     def task_label(task):
         task_id = task.get("id")
@@ -39,17 +48,19 @@ def answer(message, supplied_tasks=None):
     if any(x in text for x in ("anotação", "anotacoes", "nota", "notas")):
         if not notes:
             return "Não encontrei anotações no CRM no momento."
-        lines = [f"• {n.get('contact', 'Contato')}: {n.get('text', '')}" for n in notes[:8]]
+        lines = ["• {}: {} | contrato {}".format(n.get("contact","Contato"),n.get("text",""),n.get("contract") or "não informado") for n in notes[:8]]
         return "Estas são as anotações encontradas:\n" + "\n".join(lines)
 
     if any(x in text for x in ("atrasad", "vencid")):
-        result = []
-        for t in tasks:
-            status = str(t.get("status", "")).lower()
-            due = str(t.get("due", "")).lower()
-            if "atras" in status or "venc" in status or "atras" in due or "venc" in due:
-                result.append("• " + task_label(t))
-        return "Encontrei estas pendências com indicação de atraso/vencimento:\n" + "\n".join(result) if result else "Não encontrei tarefas marcadas como atrasadas ou vencidas."
+        result = [t for t in tasks if is_overdue(t)]
+        if not result:
+            return "Não encontrei tarefas em atraso no momento."
+        return "Encontrei {} tarefa(s) em atraso:\\n".format(len(result)) + "\\n".join(
+            "• {} | contrato {} | prazo {} | responsável {}".format(
+                t.get("title", "Tarefa"), t.get("contract", "—"),
+                t.get("due", "—"), t.get("owner", "—")
+            ) for t in result[:10]
+        )
 
     if any(x in text for x in ("oi", "olá", "ola", "bom dia", "boa tarde", "boa noite", "tudo bem")):
         return "Olá! Estou conectado ao CRM. Posso consultar tarefas, anotações, responsáveis, prazos e status para você."
@@ -87,10 +98,11 @@ def api_chat():
     body = request.get_json(silent=True) or {}
     message = body.get("message", "")
     supplied_tasks = body.get("tasks")
+    supplied_notes = body.get("notes")
     if not isinstance(message, str) or not message.strip():
         return jsonify({"error": "Envie uma mensagem em 'message'."}), 400
     try:
-        return jsonify({"reply": answer(message, supplied_tasks)})
+        return jsonify({"reply": answer(message, supplied_tasks, supplied_notes)})
     except Exception as exc:
         return jsonify({"reply": "Não consegui consultar o CRM agora.", "error": str(exc)}), 502
 
