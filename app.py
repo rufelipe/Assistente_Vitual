@@ -18,9 +18,9 @@ def get_notes():
     data = crm().get_records("/api/notes")
     return data if isinstance(data, list) else []
 
-def answer(message):
+def answer(message, supplied_tasks=None):
     text = (message or "").strip().lower()
-    tasks = get_tasks()
+    tasks = supplied_tasks if isinstance(supplied_tasks, list) else get_tasks()
     notes = get_notes()
 
     def task_label(task):
@@ -86,10 +86,11 @@ def api_notes():
 def api_chat():
     body = request.get_json(silent=True) or {}
     message = body.get("message", "")
+    supplied_tasks = body.get("tasks")
     if not isinstance(message, str) or not message.strip():
         return jsonify({"error": "Envie uma mensagem em 'message'."}), 400
     try:
-        return jsonify({"reply": answer(message)})
+        return jsonify({"reply": answer(message, supplied_tasks)})
     except Exception as exc:
         return jsonify({"reply": "Não consegui consultar o CRM agora.", "error": str(exc)}), 502
 
