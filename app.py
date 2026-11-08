@@ -37,35 +37,40 @@ def answer(message, supplied_tasks=None, supplied_notes=None):
         prefix = f"Tarefa #{task_id}" if task_id else "Tarefa"
         return f"{prefix} — {task.get('title', 'Tarefa')} — {task.get('owner', 'sem responsável')} — {task.get('due', 'sem prazo')} — {task.get('status', 'sem status')}"
 
-    if any(x in text for x in ("tarefa", "tarefas", "pendência", "pendencias", "pendência")):
-        if not tasks:
-            return "Não encontrei tarefas no CRM no momento."
-        lines = []
-        for t in tasks[:8]:
-            lines.append("• " + task_label(t))
-        return "Encontrei estas tarefas no CRM:\n" + "\n".join(lines)
+    if any(x in text for x in ("atrasad", "vencid")):
+        result = [task for task in tasks if is_overdue(task)]
+        if not result:
+            return "Não encontrei tarefas em atraso no momento."
+        lines = [
+            "• {} | contrato {} | prazo {} | responsável {}".format(
+                task.get("title", "Tarefa"), task.get("contract", "—"),
+                task.get("due", "—"), task.get("owner", "—")
+            ) for task in result[:10]
+        ]
+        return "Encontrei {} tarefa(s) em atraso:\n{}".format(len(result), "\n".join(lines))
 
     if any(x in text for x in ("anotação", "anotacoes", "nota", "notas")):
         if not notes:
             return "Não encontrei anotações no CRM no momento."
-        lines = ["• {}: {} | contrato {}".format(n.get("contact","Contato"),n.get("text",""),n.get("contract") or "não informado") for n in notes[:8]]
+        lines = [
+            "• {}: {} | contrato {}".format(
+                note.get("contact", "Contato"), note.get("text", ""),
+                note.get("contract") or "não informado"
+            ) for note in notes[:8]
+        ]
         return "Estas são as anotações encontradas:\n" + "\n".join(lines)
 
-    if any(x in text for x in ("atrasad", "vencid")):
-        result = [t for t in tasks if is_overdue(t)]
-        if not result:
-            return "Não encontrei tarefas em atraso no momento."
-        return "Encontrei {} tarefa(s) em atraso:\\n".format(len(result)) + "\\n".join(
-            "• {} | contrato {} | prazo {} | responsável {}".format(
-                t.get("title", "Tarefa"), t.get("contract", "—"),
-                t.get("due", "—"), t.get("owner", "—")
-            ) for t in result[:10]
+    if any(x in text for x in ("tarefa", "tarefas", "pendência", "pendencias")):
+        if not tasks:
+            return "Não encontrei tarefas no CRM no momento."
+        return "Encontrei estas tarefas no CRM:\n" + "\n".join(
+            "• " + task_label(task) for task in tasks[:8]
         )
 
     if any(x in text for x in ("oi", "olá", "ola", "bom dia", "boa tarde", "boa noite", "tudo bem")):
         return "Olá! Estou conectado ao CRM. Posso consultar tarefas, anotações, responsáveis, prazos e status para você."
 
-    return "Posso consultar o CRM para você. Experimente perguntar, por exemplo: “quais são minhas tarefas?”, “tem algo atrasado?” ou “mostre as anotações”."
+    return "Posso consultar o CRM para você. Experimente perguntar: “quais tarefas estão atrasadas?”, “mostre as anotações” ou “quais são minhas tarefas?”"
 
 @app.get("/")
 def index():
