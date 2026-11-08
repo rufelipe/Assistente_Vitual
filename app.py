@@ -101,10 +101,11 @@ def answer(message, supplied_tasks=None, supplied_notes=None):
             if any(is_overdue(task) for task in call_tasks)
             else "Organizei as ligações pelo próximo prazo e horário registrados no CRM. "
         )
-        if not raw_time:
-            explanation += "A primeira tarefa não tem horário de ligação preenchido; por isso usei o prazo e a prioridade para ordenar."
-        return "{} Eu começaria por {} — contrato {}. Horário: {}. Prazo: {}. Responsável no CRM: {}.\n\nPróximas ligações:\n{}".format(
-            explanation, title, contract, when, due, owner, "\n".join(result)
+        if raw_time:
+            human_time = raw_time[:5].replace(":", "h")
+            return "Eu começaria pelo contrato {} — a ligação está marcada para às {}.".format(contract, human_time)
+        return "Eu começaria pelo contrato {}. O horário da ligação não está informado no CRM; considerei o prazo {} e a prioridade {}.".format(
+            contract, due, first.get("priority") or "não informada"
         )
 
     if any(x in text for x in ("atrasad", "vencid")):
