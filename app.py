@@ -23,12 +23,17 @@ def answer(message):
     tasks = get_tasks()
     notes = get_notes()
 
+    def task_label(task):
+        task_id = task.get("id")
+        prefix = f"Tarefa #{task_id}" if task_id else "Tarefa"
+        return f"{prefix} — {task.get('title', 'Tarefa')} — {task.get('owner', 'sem responsável')} — {task.get('due', 'sem prazo')} — {task.get('status', 'sem status')}"
+
     if any(x in text for x in ("tarefa", "tarefas", "pendência", "pendencias", "pendência")):
         if not tasks:
             return "Não encontrei tarefas no CRM no momento."
         lines = []
         for t in tasks[:8]:
-            lines.append(f"• {t.get('title', 'Tarefa')} — {t.get('owner', 'sem responsável')} — {t.get('due', 'sem prazo')} — {t.get('status', 'sem status')}")
+            lines.append("• " + task_label(t))
         return "Encontrei estas tarefas no CRM:\n" + "\n".join(lines)
 
     if any(x in text for x in ("anotação", "anotacoes", "nota", "notas")):
@@ -43,7 +48,7 @@ def answer(message):
             status = str(t.get("status", "")).lower()
             due = str(t.get("due", "")).lower()
             if "atras" in status or "venc" in status or "atras" in due or "venc" in due:
-                result.append(f"• {t.get('title', 'Tarefa')} — {t.get('owner', 'sem responsável')} — {t.get('due', 'sem prazo')}")
+                result.append("• " + task_label(t))
         return "Encontrei estas pendências com indicação de atraso/vencimento:\n" + "\n".join(result) if result else "Não encontrei tarefas marcadas como atrasadas ou vencidas."
 
     if any(x in text for x in ("oi", "olá", "ola", "bom dia", "boa tarde", "boa noite", "tudo bem")):
