@@ -52,7 +52,7 @@ function renderOverview() {
  if (!Array.isArray(embeddedTasks)) return;
  const today=new Date();today.setHours(0,0,0,0);
  const overdue=embeddedTasks.filter(function(task){
-  if(!task.due||!/^\\d{4}-\\d{2}-\\d{2}$/.test(task.due))return false;
+  if(!task.due||!/^\d{4}-\d{2}-\d{2}$/.test(task.due))return false;
   return new Date(task.due+"T00:00:00")<today &&
    !["concluída","concluida","completed","done"].includes(String(task.status||"").toLowerCase());
  });
