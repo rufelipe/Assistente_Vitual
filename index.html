@@ -8,6 +8,11 @@
 :root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20283a}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f6fa}
 button,input{font:inherit}.assistant{position:fixed;right:28px;bottom:24px;width:min(390px,calc(100vw - 32px));z-index:10}
+body.embedded{min-height:100%;height:100%;background:transparent}
+body.embedded .assistant{position:static;width:100%;height:100%;max-width:none}
+body.embedded .panel{display:flex;flex-direction:column;width:100%;height:100%;border-radius:14px}
+body.embedded .messages{flex:1 1 auto;height:auto;min-height:0}
+body.embedded .robot{position:absolute;right:12px;bottom:12px;margin:0}
 .panel{overflow:hidden;border:1px solid rgba(30,40,60,.08);border-radius:20px;background:#fff;box-shadow:0 18px 55px rgba(37,44,72,.2)}
 .header{padding:18px;color:#fff;background:linear-gradient(135deg,#5848d8,#8d7af2)}
 .row{display:flex;align-items:center;gap:10px}.avatar{width:43px;height:43px;display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.15);overflow:hidden}.avatar img{width:30px;height:30px;object-fit:contain}.heading{flex:1}.heading strong{display:block;font-size:15px}.online{margin-top:4px;color:#e8e5ff;font-size:11px}.online:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#72e2b0;margin-right:6px}.close{border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer}.welcome{margin:13px 0 0;color:#f0eeff;font-size:13px;line-height:1.5}
@@ -29,7 +34,14 @@ button,input{font:inherit}.assistant{position:fixed;right:28px;bottom:24px;width
 <button class="robot" id="toggle" hidden aria-label="Abrir assistente"><img src="assets/baby-yoda-head.png" alt=""></button>
 </aside>
 <script>
+const embedded=new URLSearchParams(window.location.search).get("embed")==="1";
+if(embedded) document.body.classList.add("embedded");
 const panel=document.getElementById("panel"),toggle=document.getElementById("toggle"),messages=document.getElementById("messages"),input=document.getElementById("message"),status=document.getElementById("status");
+window.addEventListener("message",function(event){
+ if(event.data&&event.data.type==="yoda-parent-expand"){
+  panel.hidden=false;toggle.hidden=true;input.focus();
+ }
+});
 let embeddedTasks = null;
 window.addEventListener("message", function(event) {
  if (!event.data || event.data.type !== "salesforce-tasks") return;
@@ -54,8 +66,14 @@ function add(text,who){
  el.appendChild(document.createTextNode(value.slice(last)));
  messages.appendChild(el);messages.scrollTop=messages.scrollHeight
 }
-document.getElementById("close").onclick=()=>{panel.hidden=true;toggle.hidden=false};
-toggle.onclick=()=>{panel.hidden=false;toggle.hidden=true;input.focus()};
+document.getElementById("close").onclick=()=>{
+ panel.hidden=true;toggle.hidden=false;
+ if(embedded) window.parent.postMessage({type:"yoda-minimize"},"*");
+};
+toggle.onclick=()=>{
+ panel.hidden=false;toggle.hidden=true;input.focus();
+ if(embedded) window.parent.postMessage({type:"yoda-expand"},"*");
+};
 document.getElementById("form").onsubmit=async e=>{
  e.preventDefault(); const message=input.value.trim(); if(!message)return;
  add(message,"user"); input.value=""; status.textContent="Consultando o CRM...";
