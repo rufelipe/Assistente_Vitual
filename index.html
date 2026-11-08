@@ -98,7 +98,7 @@ window.parent.postMessage({type:"yoda-ready"},"*");
 function add(text,who){
  const el=document.createElement("div");el.className="msg "+who;
  const value=String(text||"");
- const pattern=/\\bcontrato\\s+([A-Z0-9-]+)/gi;
+ const pattern=/\bcontrato\s+([A-Z0-9-]+)/gi;
  let last=0, match;
  while((match=pattern.exec(value))){
   el.appendChild(document.createTextNode(value.slice(last,match.index)));
