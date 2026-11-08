@@ -43,12 +43,58 @@ window.addEventListener("message",function(event){
  }
 });
 let embeddedTasks = null;
-window.addEventListener("message", function(event) {
- if (!event.data || event.data.type !== "salesforce-tasks") return;
- embeddedTasks = Array.isArray(event.data.tasks) ? event.data.tasks : [];
- status.textContent = "Conectado ao Salesforce • " + embeddedTasks.length + " tarefas";
+let embeddedNotes = [];
+function sendContractOpen(contract) { window.parent.postMessage({type:"yoda-open-contract",contract:String(contract)}, "*"); }
+function escapeText(value) {
+ return String(value).replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];});
+}
+function renderOverview() {
+ if (!Array.isArray(embeddedTasks)) return;
+ const today=new Date();today.setHours(0,0,0,0);
+ const overdue=embeddedTasks.filter(function(task){
+  if(!task.due||!/^\\d{4}-\\d{2}-\\d{2}$/.test(task.due))return false;
+  return new Date(task.due+"T00:00:00")<today &&
+   !["concluída","concluida","completed","done"].includes(String(task.status||"").toLowerCase());
+ });
+ messages.innerHTML="";
+ const summary=document.createElement("div");summary.className="msg bot";
+ summary.innerHTML="<strong>Resumo do Salesforce</strong><br>"+
+  (overdue.length?"⚠️ Você tem <strong>"+overdue.length+"</strong> tarefa(s) em atraso.<br>":"✅ Não encontrei tarefas em atraso.<br>")+
+  "📝 "+embeddedNotes.length+" anotação(ões) de ligação disponível(is).";
+ messages.appendChild(summary);
+ overdue.slice(0,6).forEach(function(task){
+  const card=document.createElement("div");card.className="msg bot";
+  card.innerHTML="<strong>⚠️ Tarefa atrasada</strong><br>"+escapeText(task.title||"Tarefa")+
+   "<br>Prazo: "+escapeText(task.due||"—")+"<br>Contrato: ";
+  const link=document.createElement("a");link.href="#";link.textContent=task.contract||"não informado";
+  link.onclick=function(event){event.preventDefault();if(task.contract)sendContractOpen(task.contract);};
+  card.appendChild(link);card.appendChild(document.createElement("br"));
+  card.appendChild(document.createTextNode("Responsável: "+(task.owner||"não informado")));
+  messages.appendChild(card);
+ });
+ if(embeddedNotes.length){const title=document.createElement("div");title.className="msg bot";title.innerHTML="<strong>📝 Anotações recentes de ligações</strong>";messages.appendChild(title);}
+ embeddedNotes.slice(0,8).forEach(function(note){
+  const card=document.createElement("div");card.className="msg bot";
+  card.appendChild(document.createTextNode((note.contact||"Contato")+": "+(note.text||"")));
+  if(note.contract){
+   card.appendChild(document.createElement("br"));card.appendChild(document.createTextNode("Contrato: "));
+   const link=document.createElement("a");link.href="#";link.textContent=note.contract;
+   link.onclick=function(event){event.preventDefault();sendContractOpen(note.contract);};card.appendChild(link);
+  }
+  messages.appendChild(card);
+ });
+ messages.scrollTop=messages.scrollHeight;
+}
+window.addEventListener("message",function(event){
+ if(!event.data)return;
+ if(event.data.type==="salesforce-data"||event.data.type==="salesforce-tasks"){
+  embeddedTasks=Array.isArray(event.data.tasks)?event.data.tasks:[];
+  embeddedNotes=Array.isArray(event.data.notes)?event.data.notes:embeddedNotes;
+  status.textContent="Conectado ao Salesforce • "+embeddedTasks.length+" tarefas • "+embeddedNotes.length+" anotações";
+  renderOverview();
+ }
 });
-window.parent.postMessage({type:"yoda-ready"}, "*");
+window.parent.postMessage({type:"yoda-ready"},"*");
 function add(text,who){
  const el=document.createElement("div");el.className="msg "+who;
  const value=String(text||"");
@@ -78,7 +124,7 @@ document.getElementById("form").onsubmit=async e=>{
  e.preventDefault(); const message=input.value.trim(); if(!message)return;
  add(message,"user"); input.value=""; status.textContent="Consultando o CRM...";
  try{
-  const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message, tasks: embeddedTasks || undefined})});
+  const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message, tasks: embeddedTasks || undefined, notes: embeddedNotes || undefined})});
   const data=await r.json(); if(!r.ok) throw new Error(data.error||"Falha na consulta");
   add(data.reply||"Não encontrei uma resposta.","bot"); status.textContent="CRM consultado com sucesso";
  }catch(err){add("Não consegui consultar o CRM agora. Verifique se a API está disponível.","bot");status.textContent="Erro ao consultar o CRM"}
