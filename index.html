@@ -1,144 +1,48 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Assistente virtual</title>
-  <style>
-    :root {
-      color-scheme: light;
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --ink: #20283a;
-      --muted: #758096;
-    }
-    * { box-sizing: border-box; }
-    body {
-      min-height: 100vh;
-      margin: 0;
-      background: #f3f6fa;
-      color: var(--ink);
-    }
-    button { font: inherit; }
-    .assistant {
-      position: fixed;
-      right: 32px;
-      bottom: 24px;
-      z-index: 10;
-      width: min(350px, calc(100vw - 32px));
-    }
-    .panel {
-      overflow: hidden;
-      border: 1px solid rgba(30, 40, 60, .08);
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: 0 18px 55px rgba(37, 44, 72, .18);
-    }
-    .assistant-header {
-      padding: 18px;
-      color: #fff;
-      background: linear-gradient(135deg, #5848d8, #8d7af2);
-    }
-    .assistant-headrow { display: flex; align-items: center; gap: 10px; }
-    .avatar {
-      display: grid;
-      flex: 0 0 42px;
-      width: 42px;
-      height: 42px;
-      place-items: center;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,.35);
-      border-radius: 13px;
-      background: rgba(255,255,255,.14);
-    }
-    .avatar img { width: 28px; height: 28px; object-fit: contain; }
-    .heading { flex: 1; min-width: 0; }
-    .heading strong { display: block; font-size: 15px; }
-    .online { margin-top: 4px; color: #e6e2ff; font-size: 11px; }
-    .online::before {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      margin-right: 6px;
-      border-radius: 50%;
-      background: #72e2b0;
-      content: "";
-    }
-    .close {
-      padding: 0 3px;
-      border: 0;
-      background: transparent;
-      color: #fff;
-      cursor: pointer;
-      font-size: 22px;
-      opacity: .85;
-    }
-    .welcome { margin: 13px 0 0; color: #f0eeff; font-size: 13px; line-height: 1.5; }
-    .empty-state { padding: 22px 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .actions { padding: 0 18px 18px; }
-    .actions button {
-      width: 100%;
-      padding: 11px;
-      border: 0;
-      border-radius: 9px;
-      background: #f1f0ff;
-      color: #6557d9;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .robot {
-      display: flex;
-      width: 66px;
-      height: 66px;
-      margin: 10px auto 0;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      border: 0;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 8px 24px rgba(32, 40, 58, .16);
-      cursor: pointer;
-      transition: transform .2s ease;
-    }
-    .robot img { width: 42px; height: 42px; object-fit: contain; }
-    .robot:hover { transform: translateY(-2px) scale(1.03); }
-    [hidden] { display: none !important; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistente YODA</title>
+<style>
+:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20283a}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f6fa}
+button,input{font:inherit}.assistant{position:fixed;right:28px;bottom:24px;width:min(390px,calc(100vw - 32px));z-index:10}
+.panel{overflow:hidden;border:1px solid rgba(30,40,60,.08);border-radius:20px;background:#fff;box-shadow:0 18px 55px rgba(37,44,72,.2)}
+.header{padding:18px;color:#fff;background:linear-gradient(135deg,#5848d8,#8d7af2)}
+.row{display:flex;align-items:center;gap:10px}.avatar{width:43px;height:43px;display:grid;place-items:center;border-radius:14px;background:rgba(255,255,255,.15);overflow:hidden}.avatar img{width:30px;height:30px;object-fit:contain}.heading{flex:1}.heading strong{display:block;font-size:15px}.online{margin-top:4px;color:#e8e5ff;font-size:11px}.online:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#72e2b0;margin-right:6px}.close{border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer}.welcome{margin:13px 0 0;color:#f0eeff;font-size:13px;line-height:1.5}
+.messages{height:320px;overflow:auto;padding:16px;background:#fafbfe}.msg{max-width:88%;padding:10px 12px;margin:0 0 10px;border-radius:14px;font-size:13px;line-height:1.5;white-space:pre-wrap}.bot{background:#eeeafd;color:#40377c}.user{margin-left:auto;background:#6557d9;color:#fff}.status{padding:8px 16px;color:#8a92a4;font-size:10px;border-top:1px solid #edf0f5}.composer{display:flex;gap:8px;padding:12px;border-top:1px solid #edf0f5}.composer input{min-width:0;flex:1;padding:11px 12px;border:1px solid #dfe3ec;border-radius:12px;outline:none}.composer input:focus{border-color:#7668df}.send{width:44px;border:0;border-radius:12px;background:#6557d9;color:#fff;cursor:pointer}.robot{display:flex;width:66px;height:66px;margin:10px auto 0;padding:0;align-items:center;justify-content:center;border:0;border-radius:50%;background:#fff;box-shadow:0 8px 24px rgba(32,40,58,.16);cursor:pointer}.robot img{width:43px;height:43px;object-fit:contain}.robot:hover{transform:translateY(-2px) scale(1.03)}[hidden]{display:none!important}
+</style>
 </head>
 <body>
-  <aside class="assistant" aria-label="Assistente virtual YODA">
-    <section class="panel" id="panel" aria-live="polite">
-      <header class="assistant-header">
-        <div class="assistant-headrow">
-          <div class="avatar" aria-hidden="true"><img src="assets/baby-yoda-head.png" alt=""></div>
-          <div class="heading"><strong>Assistente YODA</strong><div class="online">Online</div></div>
-          <button class="close" id="close" type="button" aria-label="Minimizar assistente">×</button>
-        </div>
-        <p class="welcome">Oi! Estou pronta para ajudar. Como posso ajudar você hoje?</p>
-      </header>
-      <div class="empty-state">Inicie uma conversa com a assistente.</div>
-      <div class="actions"><button id="acknowledge" type="button">Entendi</button></div>
-    </section>
-    <button class="robot" id="toggle" type="button" aria-label="Abrir assistente" hidden>
-      <img src="assets/baby-yoda-head.png" alt="">
-    </button>
-  </aside>
-  <script>
-    var panel = document.getElementById("panel");
-    var toggle = document.getElementById("toggle");
-
-    function minimizeAssistant() {
-      panel.hidden = true;
-      toggle.hidden = false;
-    }
-
-    document.getElementById("close").addEventListener("click", minimizeAssistant);
-    document.getElementById("acknowledge").addEventListener("click", minimizeAssistant);
-    toggle.addEventListener("click", function () {
-      panel.hidden = false;
-      toggle.hidden = true;
-    });
-  </script>
+<aside class="assistant" aria-label="Assistente virtual YODA">
+<section class="panel" id="panel">
+<header class="header"><div class="row">
+<div class="avatar"><img src="assets/baby-yoda-head.png" alt=""></div>
+<div class="heading"><strong>Assistente YODA</strong><div class="online">Online • CRM conectado</div></div>
+<button class="close" id="close" type="button">×</button>
+</div><p class="welcome">Olá! Posso consultar o CRM e ajudar com tarefas, prazos, responsáveis, status e anotações.</p></header>
+<div class="messages" id="messages"><div class="msg bot">Olá! Estou pronta. O que você gostaria de consultar no CRM?</div></div>
+<div class="status" id="status">Conectado ao Salesforce demonstrativo</div>
+<form class="composer" id="form"><input id="message" autocomplete="off" placeholder="Digite sua pergunta..." aria-label="Pergunta"><button class="send" type="submit" aria-label="Enviar">➤</button></form>
+</section>
+<button class="robot" id="toggle" hidden aria-label="Abrir assistente"><img src="assets/baby-yoda-head.png" alt=""></button>
+</aside>
+<script>
+const panel=document.getElementById("panel"),toggle=document.getElementById("toggle"),messages=document.getElementById("messages"),input=document.getElementById("message"),status=document.getElementById("status");
+function add(text,who){const el=document.createElement("div");el.className="msg "+who;el.textContent=text;messages.appendChild(el);messages.scrollTop=messages.scrollHeight}
+document.getElementById("close").onclick=()=>{panel.hidden=true;toggle.hidden=false};
+toggle.onclick=()=>{panel.hidden=false;toggle.hidden=true;input.focus()};
+document.getElementById("form").onsubmit=async e=>{
+ e.preventDefault(); const message=input.value.trim(); if(!message)return;
+ add(message,"user"); input.value=""; status.textContent="Consultando o CRM...";
+ try{
+  const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
+  const data=await r.json(); if(!r.ok) throw new Error(data.error||"Falha na consulta");
+  add(data.reply||"Não encontrei uma resposta.","bot"); status.textContent="CRM consultado com sucesso";
+ }catch(err){add("Não consegui consultar o CRM agora. Verifique se a API está disponível.","bot");status.textContent="Erro ao consultar o CRM"}
+};
+input.focus();
+</script>
 </body>
 </html>
