@@ -37,6 +37,76 @@ def answer(message, supplied_tasks=None, supplied_notes=None):
         prefix = f"Tarefa #{task_id}" if task_id else "Tarefa"
         return f"{prefix} — {task.get('title', 'Tarefa')} — {task.get('owner', 'sem responsável')} — {task.get('due', 'sem prazo')} — {task.get('status', 'sem status')}"
 
+    call_question = any(term in text for term in (
+        "ligar", "ligação", "ligacoes", "ligações", "telefonar",
+        "retornar contato", "quem devo contatar", "contato primeiro"
+    ))
+    if call_question:
+        active = [
+            task for task in tasks
+            if str(task.get("status", "")).strip().lower()
+            not in ("concluída", "concluida", "completed", "done")
+        ]
+        call_tasks = []
+        for task in active:
+            response = str(task.get("response", "")).lower()
+            title = str(task.get("title", "")).lower()
+            observation = str(task.get("observation", "")).lower()
+            if (
+                "retornar contato" in response
+                or any(term in title + " " + observation for term in
+                       ("ligação", "ligar", "telefon", "retorno", "retornar"))
+            ):
+                call_tasks.append(task)
+
+        if not call_tasks:
+            return "Não encontrei ligações pendentes no CRM. Verifique se as tarefas estão marcadas com 'Retornar contato' ou possuem uma observação de ligação."
+
+        def call_sort_key(task):
+            try:
+                due = datetime.strptime(str(task.get("due", ""))[:10], "%Y-%m-%d").date()
+            except (TypeError, ValueError):
+                due = date.max
+            raw_time = str(task.get("call_time") or task.get("scheduled_time") or task.get("horario") or "").strip()
+            try:
+                scheduled_time = datetime.strptime(raw_time[:5], "%H:%M").time()
+            except ValueError:
+                scheduled_time = datetime.max.time()
+            overdue_rank = 0 if due < date.today() else 1
+            priority = str(task.get("priority", "")).lower()
+            priority_rank = 0 if priority in ("alta", "high", "urgente") else 1
+            return (overdue_rank, due, scheduled_time, priority_rank)
+
+        call_tasks.sort(key=call_sort_key)
+        first = call_tasks[0]
+        raw_time = str(first.get("call_time") or first.get("scheduled_time") or first.get("horario") or "").strip()
+        when = raw_time[:5] if raw_time else "horário não informado"
+        due = first.get("due") or "prazo não informado"
+        contract = first.get("contract") or "não informado"
+        owner = first.get("owner") or "responsável não informado"
+        title = first.get("title") or "Ligação de acompanhamento"
+        result = [
+            "• contrato {} | {} | horário {} | prazo {} | responsável {} | prioridade {}".format(
+                task.get("contract") or "não informado",
+                task.get("title") or "Ligação",
+                str(task.get("call_time") or task.get("scheduled_time") or task.get("horario") or "")[:5] or "não informado",
+                task.get("due") or "não informado",
+                task.get("owner") or "não informado",
+                task.get("priority") or "não informada"
+            )
+            for task in call_tasks[:5]
+        ]
+        explanation = (
+            "Organizei as ligações pelo prazo e horário registrados no CRM, colocando tarefas vencidas primeiro. "
+            if any(is_overdue(task) for task in call_tasks)
+            else "Organizei as ligações pelo próximo prazo e horário registrados no CRM. "
+        )
+        if not raw_time:
+            explanation += "A primeira tarefa não tem horário de ligação preenchido; por isso usei o prazo e a prioridade para ordenar."
+        return "{} Eu começaria por {} — contrato {}. Horário: {}. Prazo: {}. Responsável no CRM: {}.\n\nPróximas ligações:\n{}".format(
+            explanation, title, contract, when, due, owner, "\n".join(result)
+        )
+
     if any(x in text for x in ("atrasad", "vencid")):
         result = [task for task in tasks if is_overdue(task)]
         if not result:
