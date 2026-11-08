@@ -30,6 +30,13 @@ button,input{font:inherit}.assistant{position:fixed;right:28px;bottom:24px;width
 </aside>
 <script>
 const panel=document.getElementById("panel"),toggle=document.getElementById("toggle"),messages=document.getElementById("messages"),input=document.getElementById("message"),status=document.getElementById("status");
+let embeddedTasks = null;
+window.addEventListener("message", function(event) {
+ if (!event.data || event.data.type !== "salesforce-tasks") return;
+ embeddedTasks = Array.isArray(event.data.tasks) ? event.data.tasks : [];
+ status.textContent = "Conectado ao Salesforce • " + embeddedTasks.length + " tarefas";
+});
+window.parent.postMessage({type:"yoda-ready"}, "*");
 function add(text,who){
  const el=document.createElement("div");el.className="msg "+who;
  const value=String(text||"");
@@ -53,7 +60,7 @@ document.getElementById("form").onsubmit=async e=>{
  e.preventDefault(); const message=input.value.trim(); if(!message)return;
  add(message,"user"); input.value=""; status.textContent="Consultando o CRM...";
  try{
-  const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message})});
+  const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message, tasks: embeddedTasks || undefined})});
   const data=await r.json(); if(!r.ok) throw new Error(data.error||"Falha na consulta");
   add(data.reply||"Não encontrei uma resposta.","bot"); status.textContent="CRM consultado com sucesso";
  }catch(err){add("Não consegui consultar o CRM agora. Verifique se a API está disponível.","bot");status.textContent="Erro ao consultar o CRM"}
