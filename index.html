@@ -30,7 +30,23 @@ button,input{font:inherit}.assistant{position:fixed;right:28px;bottom:24px;width
 </aside>
 <script>
 const panel=document.getElementById("panel"),toggle=document.getElementById("toggle"),messages=document.getElementById("messages"),input=document.getElementById("message"),status=document.getElementById("status");
-function add(text,who){const el=document.createElement("div");el.className="msg "+who;el.textContent=text;messages.appendChild(el);messages.scrollTop=messages.scrollHeight}
+function add(text,who){
+ const el=document.createElement("div");el.className="msg "+who;
+ const value=String(text||"");
+ const pattern=/(Tarefa #)(\\d+)/g;
+ let last=0, match;
+ while((match=pattern.exec(value))){
+  el.appendChild(document.createTextNode(value.slice(last,match.index)));
+  const link=document.createElement("a");
+  link.href="https://salesforceteste.vercel.app/?task="+encodeURIComponent(match[2]);
+  link.target="_blank"; link.rel="noopener noreferrer";
+  link.textContent=match[0];
+  link.style.color=who==="bot"?"#40377c":"#fff"; link.style.fontWeight="700";
+  el.appendChild(link); last=pattern.lastIndex;
+ }
+ el.appendChild(document.createTextNode(value.slice(last)));
+ messages.appendChild(el);messages.scrollTop=messages.scrollHeight
+}
 document.getElementById("close").onclick=()=>{panel.hidden=true;toggle.hidden=false};
 toggle.onclick=()=>{panel.hidden=false;toggle.hidden=true;input.focus()};
 document.getElementById("form").onsubmit=async e=>{
