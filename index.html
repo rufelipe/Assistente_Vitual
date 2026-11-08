@@ -98,16 +98,20 @@ window.parent.postMessage({type:"yoda-ready"},"*");
 function add(text,who){
  const el=document.createElement("div");el.className="msg "+who;
  const value=String(text||"");
- const pattern=/(Tarefa #)(\\d+)/g;
+ const pattern=/\\bcontrato\\s+([A-Z0-9-]+)/gi;
  let last=0, match;
  while((match=pattern.exec(value))){
   el.appendChild(document.createTextNode(value.slice(last,match.index)));
+  const contractNumber=match[1];
   const link=document.createElement("a");
-  link.href="https://salesforceteste.vercel.app/?task="+encodeURIComponent(match[2]);
-  link.target="_blank"; link.rel="noopener noreferrer";
-  link.textContent=match[0];
-  link.style.color=who==="bot"?"#40377c":"#fff"; link.style.fontWeight="700";
-  el.appendChild(link); last=pattern.lastIndex;
+  link.href="#";
+  link.textContent=contractNumber;
+  link.style.color=who==="bot"?"#40377c":"#fff";
+  link.style.fontWeight="700";
+  link.style.textDecoration="underline";
+  link.onclick=function(event){event.preventDefault();sendContractOpen(contractNumber);};
+  el.appendChild(link);
+  last=pattern.lastIndex;
  }
  el.appendChild(document.createTextNode(value.slice(last)));
  messages.appendChild(el);messages.scrollTop=messages.scrollHeight
