@@ -1,10 +1,13 @@
 const ASSISTANT_API_URL = 'https://assistente-virtual-api.onrender.com';
 
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('🤖 YODA')
+  SpreadsheetApp.getUi().createMenu('YODA')
     .addItem('Abrir Assistente', 'showYoda')
     .addItem('Configurar Assistente', 'showSetup')
     .addToUi();
+
+  // Abre o YODA automaticamente quando a planilha é carregada.
+  showYoda();
 }
 
 function showYoda() {
