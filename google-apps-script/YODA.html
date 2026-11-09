@@ -1,22 +1,85 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f7f8fc;color:#20283a}
-.header{padding:14px;background:linear-gradient(135deg,#5848d8,#8d7af2);color:white}.title{font-weight:700;font-size:15px}.sub{font-size:11px;margin-top:4px;opacity:.9}
-.alert{display:none;margin:10px 12px 0;padding:10px;border:1px solid #eadf9b;border-radius:10px;background:#fffbea;color:#5f5112;font-size:12px;line-height:1.4}.alert.show{display:block}
-.messages{height:calc(100vh - 150px);min-height:300px;overflow:auto;padding:12px}.msg{max-width:90%;padding:9px 11px;margin:0 0 9px;border-radius:12px;font-size:12px;line-height:1.45;white-space:pre-wrap}.bot{background:#eeeafd;color:#40377c}.user{margin-left:auto;background:#6557d9;color:white}
-.composer{display:flex;gap:7px;padding:10px;border-top:1px solid #e5e7ef;background:white}input{flex:1;min-width:0;padding:10px;border:1px solid #dfe3ec;border-radius:10px;outline:0}button{border:0;border-radius:10px;background:#6557d9;color:#fff;padding:0 14px;cursor:pointer}.small{font-size:10px;color:#8a92a4;padding:0 12px 8px;background:white}
-</style></head><body>
-<div class="header"><div class="title">🤖 Assistente YODA</div><div class="sub">Conectada à planilha • sem som</div></div>
-<div id="alert" class="alert"></div>
-<div id="messages" class="messages"><div class="msg bot">Olá! Estou dentro desta planilha. Posso consultar os dados e ajudar com datas, horários e alterações.</div></div>
-<div class="small" id="status">Pronta</div>
-<form class="composer" id="form"><input id="input" placeholder="Pergunte sobre a planilha..." autocomplete="off"><button>Enviar</button></form>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;font-family:Inter,Arial,sans-serif;color:#20283a;background:transparent;overflow:hidden}
+button,input{font:inherit}
+#app{width:100%;height:100%;min-height:0}
+.window{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(30,40,60,.1);border-radius:18px;background:#fff;box-shadow:0 12px 35px rgba(37,44,72,.22)}
+.header{flex:0 0 auto;padding:15px;color:#fff;background:linear-gradient(135deg,#5848d8,#8d7af2)}
+.headrow{display:flex;align-items:center;gap:10px}
+.avatar{width:42px;height:42px;display:grid;place-items:center;flex:0 0 42px;border-radius:14px;background:rgba(255,255,255,.16);overflow:hidden}
+.avatar img{width:36px;height:36px;object-fit:contain}
+.heading{flex:1;min-width:0}
+.heading strong{display:block;font-size:14px}
+.online{margin-top:4px;color:#e8e5ff;font-size:10px}
+.online:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#72e2b0;margin-right:6px}
+.headbtn{width:30px;height:30px;border:0;border-radius:9px;background:rgba(255,255,255,.16);color:#fff;font-size:19px;cursor:pointer}
+.welcome{margin:11px 0 0;color:#f0eeff;font-size:12px;line-height:1.45}
+.alert{display:none;flex:0 0 auto;margin:9px 10px 0;padding:9px 10px;border:1px solid #eadf9b;border-radius:10px;background:#fffbea;color:#5f5112;font-size:11px;line-height:1.4}
+.alert.show{display:block}
+.messages{flex:1 1 auto;min-height:0;overflow:auto;padding:13px;background:#fafbfe}
+.msg{max-width:90%;padding:9px 11px;margin:0 0 9px;border-radius:13px;font-size:12px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.bot{background:#eeeafd;color:#40377c}
+.user{margin-left:auto;background:#6557d9;color:#fff}
+.status{flex:0 0 auto;padding:7px 13px;color:#8a92a4;font-size:10px;border-top:1px solid #edf0f5}
+.composer{display:flex;flex:0 0 auto;gap:8px;padding:10px;border-top:1px solid #edf0f5;background:#fff}
+.composer input{flex:1;min-width:0;padding:10px 11px;border:1px solid #dfe3ec;border-radius:11px;outline:0;font-size:12px}
+.composer input:focus{border-color:#7668df}
+.send{width:42px;border:0;border-radius:11px;background:#6557d9;color:#fff;cursor:pointer}
+#launcher{display:none;width:100%;height:100%;align-items:center;justify-content:center;border:0;border-radius:50%;background:#fff;box-shadow:0 5px 18px rgba(32,40,58,.2);cursor:pointer}
+#launcher img{width:72%;height:72%;object-fit:contain}
+body.minimized #app{display:flex;align-items:center;justify-content:center}
+body.minimized .window{display:none}
+body.minimized #launcher{display:flex}
+</style>
+</head>
+<body>
+<div id="app">
+  <section class="window" aria-label="Assistente YODA">
+    <header class="header">
+      <div class="headrow">
+        <div class="avatar"><img src="https://raw.githubusercontent.com/rufelipe/Assistente_Vitual/feature/google-sheets-alerts/assets/baby-yoda-head.png" alt="YODA"></div>
+        <div class="heading"><strong>Assistente YODA</strong><div class="online">Online • Planilha conectada</div></div>
+        <button class="headbtn" id="minimize" type="button" title="Minimizar">−</button>
+      </div>
+      <p class="welcome">Olá! Posso consultar os dados desta planilha e ajudar com datas, horários e alterações.</p>
+    </header>
+    <div id="alert" class="alert" role="status"></div>
+    <div id="messages" class="messages"><div class="msg bot">Olá! Estou pronta. O que você gostaria de consultar na planilha?</div></div>
+    <div class="status" id="status">Conectada à planilha</div>
+    <form class="composer" id="form"><input id="input" placeholder="Digite sua pergunta..." autocomplete="off" aria-label="Pergunta"><button class="send" aria-label="Enviar">➤</button></form>
+  </section>
+  <button id="launcher" type="button" title="Abrir YODA" aria-label="Abrir Assistente YODA"><img src="https://raw.githubusercontent.com/rufelipe/Assistente_Vitual/feature/google-sheets-alerts/assets/baby-yoda-head.png" alt="YODA"></button>
+</div>
 <script>
-const messages=document.getElementById('messages'),input=document.getElementById('input'),status=document.getElementById('status'),alertBox=document.getElementById('alert');
-function add(text,who){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;messages.appendChild(d);messages.scrollTop=messages.scrollHeight}
-function showAlert(text){alertBox.textContent='🔔 '+text;alertBox.classList.add('show');setTimeout(()=>alertBox.classList.remove('show'),12000)}
-document.getElementById('form').onsubmit=function(e){e.preventDefault();const q=input.value.trim();if(!q)return;add(q,'user');input.value='';status.textContent='Consultando...';google.script.run.withSuccessHandler(function(reply){add(reply,'bot');status.textContent='Pronta'}).withFailureHandler(function(err){add('Não consegui consultar a Assistente agora: '+err.message,'bot');status.textContent='Erro'}).askYoda(q)};
+const messages=document.getElementById('messages');
+const input=document.getElementById('input');
+const status=document.getElementById('status');
+const alertBox=document.getElementById('alert');
+function resizeDialog(width,height){google.script.host.setWidth(width);google.script.host.setHeight(height);}
+function minimize(){document.body.classList.add('minimized');resizeDialog(112,112);}
+function expand(){document.body.classList.remove('minimized');resizeDialog(420,620);input.focus();}
+document.getElementById('minimize').addEventListener('click',minimize);
+document.getElementById('launcher').addEventListener('click',expand);
+function add(text,who){const d=document.createElement('div');d.className='msg '+who;d.textContent=String(text||'');messages.appendChild(d);messages.scrollTop=messages.scrollHeight;}
+function showAlert(text){alertBox.textContent='🔔 '+text;alertBox.classList.add('show');}
+document.getElementById('form').addEventListener('submit',function(e){
+  e.preventDefault();const q=input.value.trim();if(!q)return;
+  add(q,'user');input.value='';status.textContent='Consultando...';
+  google.script.run.withSuccessHandler(function(reply){add(reply,'bot');status.textContent='Pronta';})
+    .withFailureHandler(function(err){add('Não consegui consultar a Assistente agora: '+err.message,'bot');status.textContent='Erro';})
+    .askYoda(q);
+});
 let lastEditAt='';
-function poll(){google.script.run.withSuccessHandler(function(edit){if(edit&&edit.at&&edit.at!==lastEditAt){lastEditAt=edit.at;showAlert('Alteração detectada: '+edit.sheet+'!'+edit.cell+' de "'+(edit.oldValue||'vazio')+'" para "'+(edit.value||'vazio')+'".')}}).getLastEdit()}
-setInterval(poll,3000);poll();input.focus();
-</script></body></html>
+function poll(){google.script.run.withSuccessHandler(function(edit){
+  if(edit&&edit.at&&edit.at!==lastEditAt){lastEditAt=edit.at;showAlert('Alteração detectada: '+edit.sheet+'!'+edit.cell+' de "'+(edit.oldValue||'vazio')+'" para "'+(edit.value||'vazio')+'".');}
+}).getLastEdit();}
+setInterval(poll,3000);poll();
+input.focus();
+</script>
+</body>
+</html>
