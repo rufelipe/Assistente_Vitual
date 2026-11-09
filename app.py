@@ -169,7 +169,7 @@ def api_notes():
     except Exception as exc:
         return jsonify({"error": "Não foi possível consultar as anotações do CRM.", "detail": str(exc)}), 502
 
-@app.post("/api/chat")
+\n\n@app.get("/api/sheets/status")\ndef api_sheets_status():\n    if not os.environ.get("GOOGLE_SHEET_ID") or not os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON"):\n        return jsonify({"enabled": False, "message": "Integração Google Sheets ainda não configurada no Render."})\n    try:\n        from google_sheets import check_for_changes\n        result = check_for_changes()\n        result["enabled"] = True\n        return jsonify(result)\n    except Exception as exc:\n        return jsonify({"enabled": True, "error": "Não foi possível consultar a planilha.", "detail": str(exc)}), 502\n\n@app.get("/api/sheets/data")\ndef api_sheets_data():\n    if not os.environ.get("GOOGLE_SHEET_ID") or not os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON"):\n        return jsonify({"enabled": False, "message": "Integração Google Sheets ainda não configurada no Render."})\n    try:\n        from google_sheets import read_sheet\n        return jsonify({"enabled": True, **read_sheet()})\n    except Exception as exc:\n        return jsonify({"enabled": True, "error": "Não foi possível ler a planilha.", "detail": str(exc)}), 502\n\n@app.post("/api/chat")
 def api_chat():
     body = request.get_json(silent=True) or {}
     message = body.get("message", "")
