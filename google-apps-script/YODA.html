@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f7f8fc;color:#20283a}
+.header{padding:14px;background:linear-gradient(135deg,#5848d8,#8d7af2);color:white}.title{font-weight:700;font-size:15px}.sub{font-size:11px;margin-top:4px;opacity:.9}
+.alert{display:none;margin:10px 12px 0;padding:10px;border:1px solid #eadf9b;border-radius:10px;background:#fffbea;color:#5f5112;font-size:12px;line-height:1.4}.alert.show{display:block}
+.messages{height:calc(100vh - 150px);min-height:300px;overflow:auto;padding:12px}.msg{max-width:90%;padding:9px 11px;margin:0 0 9px;border-radius:12px;font-size:12px;line-height:1.45;white-space:pre-wrap}.bot{background:#eeeafd;color:#40377c}.user{margin-left:auto;background:#6557d9;color:white}
+.composer{display:flex;gap:7px;padding:10px;border-top:1px solid #e5e7ef;background:white}input{flex:1;min-width:0;padding:10px;border:1px solid #dfe3ec;border-radius:10px;outline:0}button{border:0;border-radius:10px;background:#6557d9;color:#fff;padding:0 14px;cursor:pointer}.small{font-size:10px;color:#8a92a4;padding:0 12px 8px;background:white}
+</style></head><body>
+<div class="header"><div class="title">🤖 Assistente YODA</div><div class="sub">Conectada à planilha • sem som</div></div>
+<div id="alert" class="alert"></div>
+<div id="messages" class="messages"><div class="msg bot">Olá! Estou dentro desta planilha. Posso consultar os dados e ajudar com datas, horários e alterações.</div></div>
+<div class="small" id="status">Pronta</div>
+<form class="composer" id="form"><input id="input" placeholder="Pergunte sobre a planilha..." autocomplete="off"><button>Enviar</button></form>
+<script>
+const messages=document.getElementById('messages'),input=document.getElementById('input'),status=document.getElementById('status'),alertBox=document.getElementById('alert');
+function add(text,who){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;messages.appendChild(d);messages.scrollTop=messages.scrollHeight}
+function showAlert(text){alertBox.textContent='🔔 '+text;alertBox.classList.add('show');setTimeout(()=>alertBox.classList.remove('show'),12000)}
+document.getElementById('form').onsubmit=function(e){e.preventDefault();const q=input.value.trim();if(!q)return;add(q,'user');input.value='';status.textContent='Consultando...';google.script.run.withSuccessHandler(function(reply){add(reply,'bot');status.textContent='Pronta'}).withFailureHandler(function(err){add('Não consegui consultar a Assistente agora: '+err.message,'bot');status.textContent='Erro'}).askYoda(q)};
+let lastEditAt='';
+function poll(){google.script.run.withSuccessHandler(function(edit){if(edit&&edit.at&&edit.at!==lastEditAt){lastEditAt=edit.at;showAlert('Alteração detectada: '+edit.sheet+'!'+edit.cell+' de "'+(edit.oldValue||'vazio')+'" para "'+(edit.value||'vazio')+'".')}}).getLastEdit()}
+setInterval(poll,3000);poll();input.focus();
+</script></body></html>
