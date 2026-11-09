@@ -8,9 +8,10 @@ function onOpen() {
 }
 
 function showYoda() {
-  SpreadsheetApp.getUi().showSidebar(
-    HtmlService.createHtmlOutputFromFile('YODA').setTitle('Assistente YODA')
-  );
+  const html = HtmlService.createHtmlOutputFromFile('YODA')
+    .setWidth(420)
+    .setHeight(620);
+  SpreadsheetApp.getUi().showModelessDialog(html, 'YODA');
 }
 
 function showSetup() {
