@@ -1,0 +1,32 @@
+{
+  "timeZone": "America/Sao_Paulo",
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets.currentonly",
+    "https://www.googleapis.com/auth/script.external_request"
+  ],
+  "addOns": {
+    "common": {
+      "name": "Assistente YODA",
+      "logoUrl": "https://raw.githubusercontent.com/rufelipe/Assistente_Vitual/feature/google-sheets-alerts/assets/baby-yoda-head.png",
+      "layoutProperties": {
+        "primaryColor": "#5848d8",
+        "secondaryColor": "#8d7af2"
+      },
+      "homepageTrigger": {
+        "runFunction": "onHomepage",
+        "enabled": true
+      }
+    },
+    "sheets": {
+      "homepageTrigger": {
+        "runFunction": "onHomepage",
+        "enabled": true
+      }
+    }
+  },
+  "urlFetchWhitelist": [
+    "https://assistente-virtual-api.onrender.com/"
+  ]
+}
