@@ -14,7 +14,7 @@ function buildHomeCard() {
     .setTitle('Assistente YODA')
     .setSubtitle('Assistente Virtual para Google Sheets')
     .setImageUrl('https://raw.githubusercontent.com/rufelipe/Assistente_Vitual/feature/google-sheets-alerts/assets/baby-yoda-head.png')
-    .setImageStyle(CardService.newImageStyle().setImageType(CardService.ImageType.CIRCLE));
+    .setImageStyle(CardService.ImageStyle.CIRCLE);
 
   const context = CardService.newTextParagraph()
     .setText('<b>Planilha:</b> ' + escapeHtml(spreadsheetName) + '<br><b>Aba:</b> ' + escapeHtml(sheetName) + '<br><font color="#5f6368">O YODA pode consultar os dados da aba atual e conversar com sua Assistente Virtual.</font>');
@@ -61,7 +61,7 @@ function buildChatCard(reply) {
     .setTitle('YODA • Conversa')
     .setSubtitle(spreadsheetName + ' • ' + sheetName)
     .setImageUrl('https://raw.githubusercontent.com/rufelipe/Assistente_Vitual/feature/google-sheets-alerts/assets/baby-yoda-head.png')
-    .setImageStyle(CardService.newImageStyle().setImageType(CardService.ImageType.CIRCLE));
+    .setImageStyle(CardService.ImageStyle.CIRCLE);
 
   const section = CardService.newCardSection();
 
