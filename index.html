@@ -134,6 +134,43 @@ document.getElementById("form").onsubmit=async e=>{
  }catch(err){add("Não consegui consultar o CRM agora. Verifique se a API está disponível.","bot");status.textContent="Erro ao consultar o CRM"}
 };
 input.focus();
+
+const sheetAlert=document.getElementById("sheetAlert");
+let sheetFirstCheck=true;
+
+function showSheetAlert(data){
+ if(!sheetAlert)return;
+ const changes=Array.isArray(data.changes)?data.changes:[];
+ if(!data.changed || !changes.length){
+  if(!sheetFirstCheck) sheetAlert.classList.remove("show");
+  return;
+ }
+ const preview=changes.slice(0,3).map(function(change){
+  const before=change.before===""?"vazio":change.before;
+  const after=change.after===""?"vazio":change.after;
+  return "Célula "+change.row+","+change.column+": "+before+" → "+after;
+ }).join(" • ");
+ sheetAlert.textContent="🔔 A planilha foi alterada. "+preview+(changes.length>3?" • +"+(changes.length-3)+" alteração(ões)":"");
+ sheetAlert.classList.add("show");
+}
+
+async function checkGoogleSheet(){
+ try{
+  const response=await fetch("/api/sheets/status",{cache:"no-store"});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"Falha");
+  if(data.enabled){
+   status.textContent=data.changed?"Google Sheets • alteração detectada":"CRM + Google Sheets conectados";
+   showSheetAlert(data);
+  }
+  sheetFirstCheck=false;
+ }catch(error){
+  // A integração do Sheets é opcional; não interrompe o chat do CRM.
+ }
+}
+
+checkGoogleSheet();
+setInterval(checkGoogleSheet,5000);
 </script>
 </body>
 </html>
