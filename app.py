@@ -18,6 +18,272 @@ def get_notes():
     data = crm().get_records("/api/notes")
     return data if isinstance(data, list) else []
 
+
+from urllib.parse import quote
+
+def _sheet_column_letter(number):
+    result = ""
+    while number > 0:
+        number, remainder = divmod(number - 1, 26)
+        result = chr(65 + remainder) + result
+    return result
+
+def answer_from_sheets(message, sheets, spreadsheet_url=""):
+    """Consulta NPS usando os valores enviados pelo Apps Script."""
+    text = (message or "").strip().lower()
+    nps_terms = ("nps", "satisfação", "satisfacao", "detrator", "promotor")
+    if not any(term in text for term in nps_terms):
+        return None
+
+    if not isinstance(sheets, list) or not sheets:
+        return {
+            "reply": "Não recebi as abas da planilha nesta consulta. Reabra o YODA e tente novamente.",
+            "sources": []
+        }
+
+    candidates = []
+    for sheet in sheets:
+        if not isinstance(sheet, dict):
+            continue
+        name = str(sheet.get("name") or sheet.get("sheetName") or "")
+        values = sheet.get("values") or []
+        sheet_id = sheet.get("sheetId", sheet.get("gid"))
+
+        # Procura o rótulo NPS e o valor na célula imediatamente à direita.
+        for row_idx, row in enumerate(values):
+            if not isinstance(row, list):
+                continue
+            for col_idx, cell in enumerate(row):
+                label = str(cell or "").strip().lower()
+                if "nps" not in label:
+                    continue
+                for value_idx in range(col_idx + 1, len(row)):
+                    value = str(row[value_idx] or "").strip()
+                    if value:
+                        cell_ref = f"{_sheet_column_letter(value_idx + 1)}{row_idx + 1}"
+                        candidates.append((0 if name.lower() == "dashboard" else 1,
+                                           name, cell_ref, value, sheet_id))
+                        break
+
+        # Fallback para o endereço Dashboard!B4, previamente identificado.
+        if name.strip().lower() == "dashboard":
+            try:
+                value = str(values[3][1] or "").strip()
+            except (IndexError, TypeError):
+                value = ""
+            if value:
+                candidates.append((0, name, "B4", value, sheet_id))
+
+    if not candidates:
+        return {
+            "reply": "Recebi as abas da planilha, mas não localizei um valor de NPS identificável. Não vou inventar um resultado. Confira o indicador no Dashboard.",
+            "sources": []
+        }
+
+    candidates.sort(key=lambda item: item[0])
+    _, sheet_name, cell_ref, value, sheet_id = candidates[0]
+    base = spreadsheet_url.split("#")[0] if spreadsheet_url else ""
+    url = (f"{base}#gid={sheet_id}&range={quote(cell_ref, safe='!:
+    from datetime import date, datetime
+    text = (message or "").strip().lower()
+    tasks = supplied_tasks if isinstance(supplied_tasks, list) else get_tasks()
+    notes = supplied_notes if isinstance(supplied_notes, list) else get_notes()
+
+    def is_overdue(task):
+        try:
+            due = datetime.strptime(str(task.get("due", ""))[:10], "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return False
+        status = str(task.get("status", "")).strip().lower()
+        return due < date.today() and status not in ("concluída", "concluida", "completed", "done")
+
+    def task_label(task):
+        task_id = task.get("id")
+        prefix = f"Tarefa #{task_id}" if task_id else "Tarefa"
+        return f"{prefix} — {task.get('title', 'Tarefa')} — {task.get('owner', 'sem responsável')} — {task.get('due', 'sem prazo')} — {task.get('status', 'sem status')}"
+
+    call_question = any(term in text for term in (
+        "ligar", "ligação", "ligacoes", "ligações", "telefonar",
+        "retornar contato", "quem devo contatar", "contato primeiro"
+    ))
+    if call_question:
+        active = [
+            task for task in tasks
+            if str(task.get("status", "")).strip().lower()
+            not in ("concluída", "concluida", "completed", "done")
+        ]
+        call_tasks = []
+        for task in active:
+            response = str(task.get("response", "")).lower()
+            title = str(task.get("title", "")).lower()
+            observation = str(task.get("observation", "")).lower()
+            if (
+                "retornar contato" in response
+                or any(term in title + " " + observation for term in
+                       ("ligação", "ligar", "telefon", "retorno", "retornar"))
+            ):
+                call_tasks.append(task)
+
+        if not call_tasks:
+            return "Não encontrei ligações pendentes no CRM. Verifique se as tarefas estão marcadas com 'Retornar contato' ou possuem uma observação de ligação."
+
+        def call_sort_key(task):
+            try:
+                due = datetime.strptime(str(task.get("due", ""))[:10], "%Y-%m-%d").date()
+            except (TypeError, ValueError):
+                due = date.max
+            raw_time = str(task.get("call_time") or task.get("scheduled_time") or task.get("horario") or "").strip()
+            try:
+                scheduled_time = datetime.strptime(raw_time[:5], "%H:%M").time()
+            except ValueError:
+                scheduled_time = datetime.max.time()
+            overdue_rank = 0 if due < date.today() else 1
+            priority = str(task.get("priority", "")).lower()
+            priority_rank = 0 if priority in ("alta", "high", "urgente") else 1
+            return (overdue_rank, due, scheduled_time, priority_rank)
+
+        call_tasks.sort(key=call_sort_key)
+        first = call_tasks[0]
+        raw_time = str(first.get("call_time") or first.get("scheduled_time") or first.get("horario") or "").strip()
+        when = raw_time[:5] if raw_time else "horário não informado"
+        due = first.get("due") or "prazo não informado"
+        contract = first.get("contract") or "não informado"
+        owner = first.get("owner") or "responsável não informado"
+        title = first.get("title") or "Ligação de acompanhamento"
+        result = [
+            "• contrato {} | {} | horário {} | prazo {} | responsável {} | prioridade {}".format(
+                task.get("contract") or "não informado",
+                task.get("title") or "Ligação",
+                str(task.get("call_time") or task.get("scheduled_time") or task.get("horario") or "")[:5] or "não informado",
+                task.get("due") or "não informado",
+                task.get("owner") or "não informado",
+                task.get("priority") or "não informada"
+            )
+            for task in call_tasks[:5]
+        ]
+        explanation = (
+            "Organizei as ligações pelo prazo e horário registrados no CRM, colocando tarefas vencidas primeiro. "
+            if any(is_overdue(task) for task in call_tasks)
+            else "Organizei as ligações pelo próximo prazo e horário registrados no CRM. "
+        )
+        if raw_time:
+            human_time = raw_time[:5].replace(":", "h")
+            return "Eu começaria pelo contrato {} — a ligação está marcada para às {}.".format(contract, human_time)
+        return "Eu começaria pelo contrato {}. O horário da ligação não está informado no CRM; considerei o prazo {} e a prioridade {}.".format(
+            contract, due, first.get("priority") or "não informada"
+        )
+
+    if any(x in text for x in ("atrasad", "vencid")):
+        result = [task for task in tasks if is_overdue(task)]
+        if not result:
+            return "Não encontrei tarefas em atraso no momento."
+        lines = [
+            "• {} | contrato {} | prazo {} | responsável {}".format(
+                task.get("title", "Tarefa"), task.get("contract", "—"),
+                task.get("due", "—"), task.get("owner", "—")
+            ) for task in result[:10]
+        ]
+        return "Encontrei {} tarefa(s) em atraso:\n{}".format(len(result), "\n".join(lines))
+
+    if any(x in text for x in ("anotação", "anotacoes", "nota", "notas")):
+        if not notes:
+            return "Não encontrei anotações no CRM no momento."
+        lines = [
+            "• {}: {} | contrato {}".format(
+                note.get("contact", "Contato"), note.get("text", ""),
+                note.get("contract") or "não informado"
+            ) for note in notes[:8]
+        ]
+        return "Estas são as anotações encontradas:\n" + "\n".join(lines)
+
+    if any(x in text for x in ("tarefa", "tarefas", "pendência", "pendencias")):
+        if not tasks:
+            return "Não encontrei tarefas no CRM no momento."
+        return "Encontrei estas tarefas no CRM:\n" + "\n".join(
+            "• " + task_label(task) for task in tasks[:8]
+        )
+
+    if any(x in text for x in ("oi", "olá", "ola", "bom dia", "boa tarde", "boa noite", "tudo bem")):
+        return "Olá! Estou conectado ao CRM. Posso consultar tarefas, anotações, responsáveis, prazos e status para você."
+
+    return "Posso consultar o CRM para você. Experimente perguntar: “quais tarefas estão atrasadas?”, “mostre as anotações” ou “quais são minhas tarefas?”"
+
+@app.get("/")
+def index():
+    return send_from_directory(".", "index.html")
+
+@app.get("/assets/<path:filename>")
+def assets(filename):
+    return send_from_directory("assets", filename)
+
+@app.get("/healthz")
+def healthz():
+    return jsonify({"status": "ok"})
+
+@app.get("/api/tasks")
+def api_tasks():
+    try:
+        return jsonify(get_tasks())
+    except Exception as exc:
+        return jsonify({"error": "Não foi possível consultar as tarefas do CRM.", "detail": str(exc)}), 502
+
+@app.get("/api/notes")
+def api_notes():
+    try:
+        return jsonify(get_notes())
+    except Exception as exc:
+        return jsonify({"error": "Não foi possível consultar as anotações do CRM.", "detail": str(exc)}), 502
+
+@app.post("/api/chat")
+def api_chat():
+    body = request.get_json(silent=True) or {}
+    message = body.get("message", "")
+    supplied_tasks = body.get("tasks")
+    supplied_notes = body.get("notes")
+
+    if not isinstance(message, str) or not message.strip():
+        return jsonify({"error": "Envie uma mensagem em 'message'."}), 400
+
+    try:
+        # Prioriza os dados da planilha recebidos pelo Apps Script.
+        sheet_result = answer_from_sheets(
+            message,
+            body.get("sheets", []),
+            body.get("spreadsheetUrl", "")
+        )
+        if sheet_result is not None:
+            return jsonify(sheet_result)
+
+        # Mantém o comportamento anterior do CRM para as demais perguntas.
+        return jsonify({
+            "reply": answer(message, supplied_tasks, supplied_notes),
+            "sources": []
+        })
+    except Exception as exc:
+        return jsonify({
+            "reply": "Não consegui consultar os dados agora.",
+            "error": str(exc),
+            "sources": []
+        }), 502
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
+)}"
+           if base and sheet_id is not None else "")
+    sources = [{
+        "sheetName": sheet_name,
+        "range": cell_ref,
+        "label": f"{sheet_name}!{cell_ref}",
+        "url": url
+    }] if url else []
+
+    return {
+        "reply": f"O NPS encontrado na planilha é {value}.\\n\\nFonte: {sheet_name}!{cell_ref}.",
+        "sources": sources
+    }
+
+
 def answer(message, supplied_tasks=None, supplied_notes=None):
     from datetime import date, datetime
     text = (message or "").strip().lower()
