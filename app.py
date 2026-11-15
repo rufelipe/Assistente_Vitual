@@ -34,11 +34,200 @@ def _column_letter(number):
         result = chr(65 + remainder) + result
     return result
 
+def _sheet_header(values, required):
+    """Localiza a linha de cabeçalho mesmo quando a aba tem linhas de título."""
+    required = {_normalize_text(x) for x in required}
+    for row_index, row in enumerate(values[:15]):
+        if not isinstance(row, list):
+            continue
+        headers = [_normalize_text(x) for x in row]
+        if len(required.intersection(headers)) >= min(2, len(required)):
+            return row_index, headers
+    return None, []
+
+
+def _cell_value(row, headers, *names):
+    for name in names:
+        key = _normalize_text(name)
+        if key in headers:
+            index = headers.index(key)
+            return row[index] if index < len(row) else ""
+    return ""
+
+
+def _parse_sheet_date(value):
+    from datetime import datetime, date
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    raw = str(value or "").strip()
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d/%m/%y", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(raw[:10], fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def _nps_analysis(message, sheets, spreadsheet_url=""):
+    from collections import defaultdict
+    from datetime import date
+    question = _normalize_text(message)
+    nps_sheet = next((s for s in sheets if isinstance(s, dict) and
+                      "nps" in _normalize_text(s.get("name") or s.get("sheetName"))), None)
+    if not nps_sheet:
+        return None
+
+    values = nps_sheet.get("values") or []
+    header_row, headers = _sheet_header(
+        values, ["Data resposta", "Nota", "Categoria da nota", "E-mail analista"]
+    )
+    if header_row is None:
+        return {"reply": "Encontrei a aba NPS Diário, mas não consegui identificar todos os cabeçalhos necessários para calcular o NPS.", "sources": []}
+
+    roster = {}
+    roster_sheet = next((s for s in sheets if isinstance(s, dict) and
+                         "equipe" in _normalize_text(s.get("name") or s.get("sheetName"))), None)
+    if roster_sheet:
+        rv = roster_sheet.get("values") or []
+        rh_index, rh = _sheet_header(rv, ["Nome", "E-mail"])
+        if rh_index is not None:
+            for row in rv[rh_index + 1:]:
+                if not isinstance(row, list):
+                    continue
+                email = str(_cell_value(row, rh, "E-mail", "Email") or "").strip().lower()
+                name = str(_cell_value(row, rh, "Nome") or "").strip()
+                if email and name:
+                    roster[email] = name
+
+    today = date.today()
+    month_requested = any(x in question for x in ("este mes", "nesse mes", "mes atual", "em novembro", "novembro"))
+    october_requested = "outubro" in question
+    selected = []
+    unmatched = set()
+    for row in values[header_row + 1:]:
+        if not isinstance(row, list):
+            continue
+        email = str(_cell_value(row, headers, "E-mail analista", "Email analista") or "").strip().lower()
+        category = _normalize_text(_cell_value(row, headers, "Categoria da nota", "Tipo NPS"))
+        raw_date = _cell_value(row, headers, "Data resposta", "Data")
+        response_date = _parse_sheet_date(raw_date)
+        if not email or not category:
+            continue
+        if month_requested and response_date and response_date.month != today.month:
+            continue
+        if october_requested and response_date and response_date.month != 10:
+            continue
+        if not any(term in category for term in ("promoter", "promotor", "passive", "neutro", "detractor", "detrator")):
+            continue
+        if email not in roster:
+            unmatched.add(email)
+        selected.append((email, category, response_date))
+
+    if not selected:
+        return {"reply": "Não encontrei avaliações de NPS para o período solicitado na aba NPS Diário.", "sources": []}
+
+    stats = defaultdict(lambda: {"promotores": 0, "neutros": 0, "detratores": 0, "total": 0})
+    for email, category, _ in selected:
+        item = stats[email]
+        item["total"] += 1
+        if "promot" in category:
+            item["promotores"] += 1
+        elif "passiv" in category or "neutr" in category:
+            item["neutros"] += 1
+        elif "detract" in category or "detrat" in category:
+            item["detratores"] += 1
+
+    for item in stats.values():
+        item["nps"] = round((item["promotores"] - item["detratores"]) * 100 / item["total"], 2)
+
+    is_promoters = "promotor" in question
+    is_detractors = "detrator" in question
+    is_best = any(x in question for x in ("melhor", "maior", "top", "ranking", "lider"))
+    is_worst = any(x in question for x in ("pior", "menor", "baixo", "atencao", "precisa"))
+    is_comparison = any(x in question for x in ("compare", "comparacao", "todos", "equipe", "analistas", "ranking"))
+    ordered = sorted(stats.items(), key=lambda pair: pair[1]["nps"], reverse=True)
+
+    def label(email):
+        return roster.get(email, f"E-mail sem correspondência no cadastro ({email})")
+
+    if is_promoters:
+        ranked = sorted(stats.items(), key=lambda pair: pair[1]["promotores"], reverse=True)
+        title = "Quantidade de avaliações promotoras"
+        value_key = "promotores"
+    elif is_detractors:
+        ranked = sorted(stats.items(), key=lambda pair: pair[1]["detratores"], reverse=True)
+        title = "Quantidade de avaliações detratoras"
+        value_key = "detratores"
+    else:
+        ranked = ordered
+        title = "Ranking de NPS por analista"
+        value_key = "nps"
+
+    if is_best and not is_comparison and not is_promoters and not is_detractors:
+        ranked = ranked[:1]
+        title = "Maior NPS encontrado"
+    elif is_worst and not is_comparison and not is_promoters and not is_detractors:
+        ranked = sorted(stats.items(), key=lambda pair: pair[1]["nps"])
+        ranked = ranked[:1]
+        title = "Menor NPS encontrado"
+
+    period = "mês atual" if month_requested else ("outubro" if october_requested else "todo o período disponível")
+    lines = []
+    for rank, (email, item) in enumerate(ranked, 1):
+        value = f"{item[value_key]}%" if value_key == "nps" else str(item[value_key])
+        lines.append(
+            f"{rank}. {label(email)} — NPS {item['nps']:.2f} | "
+            f"{item['promotores']} promotores, {item['neutros']} neutros, "
+            f"{item['detratores']} detratores ({item['total']} avaliações)"
+        )
+
+    total = len(selected)
+    promoters = sum(x["promotores"] for x in stats.values())
+    detractors = sum(x["detratores"] for x in stats.values())
+    overall = round((promoters - detractors) * 100 / total, 2)
+    reply = (
+        f"{title} — {period}.\n"
+        f"NPS geral das avaliações consideradas: {overall:.2f} ({total} respostas).\n"
+        + "\n".join(lines)
+    )
+    if unmatched:
+        reply += (
+            "\n\nAtenção: há e-mails nas avaliações que não correspondem exatamente "
+            "ao cadastro da aba Equipe e Config. Mantive esses registros separados "
+            "para não atribuir resultados à pessoa errada."
+        )
+
+    base_url = spreadsheet_url.split("#")[0] if spreadsheet_url else ""
+    sheet_id = nps_sheet.get("sheetId", nps_sheet.get("gid"))
+    source_url = f"{base_url}#gid={sheet_id}&range=A{header_row + 1}:O{len(values)}" if base_url and sheet_id is not None else ""
+    sources = [{
+        "sheetName": nps_sheet.get("name") or nps_sheet.get("sheetName") or "NPS Diário",
+        "range": f"A{header_row + 1}:O{len(values)}",
+        "label": "NPS Diário — avaliações utilizadas",
+        "url": source_url
+    }] if source_url else []
+    return {"reply": reply, "sources": sources}
+
+
 def answer_from_sheets(message, sheets, spreadsheet_url=""):
-    """Responde com base nos valores enviados pelo Google Apps Script."""
+    """Responde com cálculos estruturados e consultas gerais às abas enviadas pelo Apps Script."""
     question = _normalize_text(message).strip()
     if not isinstance(sheets, list) or not sheets:
         return None
+
+    is_sheet_question = any(term in question for term in (
+        "planilha", "aba", "nps", "analista", "equipe", "promotor", "detrator",
+        "satisfacao", "monitoria", "coach", "abs", "fora do prazo", "fora prazo"
+    ))
+    is_nps_question = any(term in question for term in (
+        "nps", "promotor", "detrator", "satisfacao"
+    ))
+    if is_nps_question:
+        result = _nps_analysis(message, sheets, spreadsheet_url)
+        if result is not None:
+            return result
 
     stop_words = {
         "qual", "quais", "quanto", "quantos", "quantas", "como", "esta",
@@ -48,23 +237,15 @@ def answer_from_sheets(message, sheets, spreadsheet_url=""):
     }
     terms = [word for word in re.findall(r"[a-z0-9]+", question)
              if len(word) > 2 and word not in stop_words]
-
-    is_nps = any(term in question for term in
-                 ("nps", "satisfacao", "detrator", "promotor"))
-
     rows_found = []
-    nps_found = []
-
     for sheet in sheets:
         if not isinstance(sheet, dict):
             continue
         sheet_name = str(sheet.get("name") or sheet.get("sheetName") or "Planilha")
         values = sheet.get("values") or []
         sheet_id = sheet.get("sheetId", sheet.get("gid"))
-
         if not isinstance(values, list):
             continue
-
         for row_index, row in enumerate(values):
             if not isinstance(row, list):
                 continue
@@ -72,80 +253,35 @@ def answer_from_sheets(message, sheets, spreadsheet_url=""):
             nonempty = [(i, value) for i, value in enumerate(cells) if value]
             if not nonempty:
                 continue
-
             row_text = _normalize_text(" ".join(cells))
             matched = [term for term in terms if term in row_text]
-            if is_nps and "nps" in row_text:
-                for col_index, value in nonempty:
-                    if "nps" in _normalize_text(value):
-                        result_cell = None
-                        for value_index in range(col_index + 1, len(cells)):
-                            if cells[value_index]:
-                                result_cell = value_index
-                                break
-                        if result_cell is not None:
-                            nps_found.append({
-                                "sheet": sheet_name,
-                                "cell": f"{_column_letter(result_cell + 1)}{row_index + 1}",
-                                "value": cells[result_cell],
-                                "sheet_id": sheet_id
-                            })
-                        break
-
             if matched:
-                score = len(matched)
                 rows_found.append({
-                    "score": score,
-                    "sheet": sheet_name,
-                    "row": row_index + 1,
-                    "cells": nonempty[:12],
-                    "sheet_id": sheet_id,
-                    "matched": matched
+                    "score": len(matched), "sheet": sheet_name,
+                    "row": row_index + 1, "cells": nonempty[:12],
+                    "sheet_id": sheet_id
                 })
-
-    if is_nps and nps_found:
-        # Prioriza o indicador localizado no Dashboard.
-        nps_found.sort(key=lambda item: 0 if item["sheet"].strip().lower() == "dashboard" else 1)
-        found = nps_found[0]
-        base_url = spreadsheet_url.split("#")[0] if spreadsheet_url else ""
-        source_url = (f"{base_url}#gid={found['sheet_id']}&range={quote(found['cell'], safe='!:')}"
-                      if base_url and found["sheet_id"] is not None else "")
-        sources = [{
-            "sheetName": found["sheet"],
-            "range": found["cell"],
-            "label": f"{found['sheet']}!{found['cell']}",
-            "url": source_url
-        }] if source_url else []
-        return {
-            "reply": f"O NPS encontrado na planilha é {found['value']}. Fonte: {found['sheet']}!{found['cell']}.",
-            "sources": sources
-        }
 
     if rows_found:
         rows_found.sort(key=lambda item: item["score"], reverse=True)
-        best = rows_found[:5]
-        output = []
-        sources = []
-        for item in best:
+        output, sources = [], []
+        base_url = spreadsheet_url.split("#")[0] if spreadsheet_url else ""
+        for item in rows_found[:5]:
             details = " | ".join(f"{_column_letter(col + 1)}: {value}"
                                  for col, value in item["cells"])
             output.append(f"{item['sheet']} (linha {item['row']}): {details}")
-            base_url = spreadsheet_url.split("#")[0] if spreadsheet_url else ""
             if base_url and item["sheet_id"] is not None:
                 cell = f"A{item['row']}"
                 sources.append({
-                    "sheetName": item["sheet"],
-                    "range": cell,
+                    "sheetName": item["sheet"], "range": cell,
                     "label": f"{item['sheet']}!{cell}",
                     "url": f"{base_url}#gid={item['sheet_id']}&range={quote(cell, safe='!:')}"
                 })
-        return {
-            "reply": "Encontrei estas informações nas abas da planilha:\n" + "\n".join(output),
-            "sources": sources
-        }
+        return {"reply": "Encontrei estas informações nas abas da planilha:\n" + "\n".join(output), "sources": sources}
 
+    if is_sheet_question:
+        return {"reply": "Entendi que sua pergunta é sobre a planilha, mas não encontrei dados suficientes para respondê-la. Tente indicar o indicador, analista ou período que deseja consultar.", "sources": []}
     return None
-
 
 def answer(message, supplied_tasks=None, supplied_notes=None):
     from datetime import date, datetime
