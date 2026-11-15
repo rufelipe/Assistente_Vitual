@@ -440,8 +440,16 @@ def answer_from_sheets(message, sheets, spreadsheet_url=""):
     if not isinstance(sheets, list) or not sheets:
         return None
 
-    # A análise genérica por IA vem antes de regras específicas de indicadores,
-    # permitindo consultar qualquer assunto e qualquer estrutura de planilha.
+    # Perguntas claramente dirigidas ao CRM continuam no fluxo próprio.
+    crm_terms = (
+        "tarefa", "tarefas", "atrasad", "vencid", "anotacao", "anotacoes",
+        "ligar", "ligacao", "ligacoes", "retornar contato", "minhas tarefas"
+    )
+    explicit_sheet = any(term in question for term in ("planilha", "aba", "celula", "dados da", "na tabela"))
+    if not explicit_sheet and any(term in question for term in crm_terms):
+        return None
+
+    # A análise genérica por IA permite consultar qualquer assunto e estrutura de planilha.
     ai_result = _ai_spreadsheet_answer(message, sheets, spreadsheet_url)
     if ai_result is not None:
         return ai_result
