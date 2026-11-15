@@ -211,6 +211,107 @@ def _nps_analysis(message, sheets, spreadsheet_url=""):
     return {"reply": reply, "sources": sources}
 
 
+
+def _is_yes(value):
+    value = _normalize_text(value).strip()
+    return value in ("sim", "s", "yes", "y", "true", "1", "faltou", "ausente", "falta")
+
+
+def _abs_analysis(message, sheets, spreadsheet_url=""):
+    from collections import defaultdict
+    question = _normalize_text(message)
+    abs_sheet = next((s for s in sheets if isinstance(s, dict) and
+                      "abs" in _normalize_text(s.get("name") or s.get("sheetName"))), None)
+    if not abs_sheet:
+        return {"reply": "Não recebi a aba ABS Diário no contexto enviado pela planilha. Verifique se o Apps Script está enviando todas as abas.", "sources": []}
+
+    values = abs_sheet.get("values") or []
+    header_row, headers = _sheet_header(
+        values, ["Data", "E-mail do analista", "Faltou"]
+    )
+    if header_row is None:
+        return {"reply": "Encontrei a aba ABS Diário, mas não identifiquei os cabeçalhos Data, E-mail do analista e Faltou.", "sources": []}
+
+    roster = {}
+    roster_sheet = next((s for s in sheets if isinstance(s, dict) and
+                         "equipe" in _normalize_text(s.get("name") or s.get("sheetName"))), None)
+    if roster_sheet:
+        rv = roster_sheet.get("values") or []
+        ri, rh = _sheet_header(rv, ["Nome", "E-mail"])
+        if ri is not None:
+            for row in rv[ri + 1:]:
+                if isinstance(row, list):
+                    email = str(_cell_value(row, rh, "E-mail", "Email") or "").strip().lower()
+                    name = str(_cell_value(row, rh, "Nome") or "").strip()
+                    if email and name:
+                        roster[email] = name
+
+    grouped = defaultdict(lambda: {"faltas": 0, "registros": 0, "datas": [], "motivos": []})
+    total_absences = 0
+    for row in values[header_row + 1:]:
+        if not isinstance(row, list):
+            continue
+        email = str(_cell_value(row, headers, "E-mail do analista", "Email do analista") or "").strip().lower()
+        if not email:
+            continue
+        missed = _is_yes(_cell_value(row, headers, "Faltou"))
+        absence = _is_yes(_cell_value(row, headers, "Ausência", "Ausencia"))
+        # Uma linha conta no máximo uma falta, mesmo que os dois campos estejam marcados.
+        is_absent = missed or absence
+        item = grouped[email]
+        item["registros"] += 1
+        if is_absent:
+            item["faltas"] += 1
+            total_absences += 1
+            day = _cell_value(row, headers, "Data", "Dia previsto?")
+            if day:
+                item["datas"].append(str(day))
+            reason = _cell_value(row, headers, "Observações / motivo", "Observacoes / motivo", "Observações", "Motivo")
+            if reason:
+                item["motivos"].append(str(reason))
+
+    if not grouped:
+        return {"reply": "Não encontrei registros com e-mail de analista na aba ABS Diário.", "sources": []}
+
+    def display_name(email):
+        return roster.get(email, f"E-mail sem correspondência no cadastro ({email})")
+
+    ranked = sorted(grouped.items(), key=lambda pair: (pair[1]["faltas"], pair[1]["registros"]), reverse=True)
+    asks_person = any(token in question for token in ("analista", "quem", "responsavel", "responsável"))
+    asks_total = any(token in question for token in ("total", "geral", "equipe", "todos", "quantas", "quantos"))
+    asks_detail = any(token in question for token in ("motivo", "observacao", "observacoes", "detalhe", "data"))
+    lines = []
+    for email, item in ranked:
+        lines.append(f"• {display_name(email)} — {item['faltas']} falta(s) em {item['registros']} registro(s)")
+        if asks_detail and item["motivos"]:
+            lines.append("  Motivos registrados: " + "; ".join(item["motivos"][:3]))
+
+    if asks_person and not asks_total and ranked:
+        target_terms = [t for t in re.findall(r"[a-z0-9]+", question)
+                        if len(t) > 2 and t not in {"abs", "quem", "analista", "analistas", "faltou", "faltas", "teve", "tem"}]
+        matching = [(email, item) for email, item in ranked
+                    if any(t in _normalize_text(display_name(email)) for t in target_terms)]
+        if matching:
+            email, item = matching[0]
+            reply = f"{display_name(email)} tem {item['faltas']} falta(s) em {item['registros']} registro(s) na aba ABS Diário."
+            if item["motivos"]:
+                reply += " Motivos: " + "; ".join(item["motivos"][:5])
+        else:
+            reply = "Resumo de ABS por analista:\n" + "\n".join(lines)
+    else:
+        reply = f"Resumo de ABS Diário: {total_absences} falta(s) em {sum(x['registros'] for x in grouped.values())} registro(s).\n" + "\n".join(lines)
+
+    sheet_id = abs_sheet.get("sheetId", abs_sheet.get("gid"))
+    base_url = spreadsheet_url.split("#")[0] if spreadsheet_url else ""
+    source_url = f"{base_url}#gid={sheet_id}&range=A{header_row + 1}:F{len(values)}" if base_url and sheet_id is not None else ""
+    sources = [{
+        "sheetName": abs_sheet.get("name") or abs_sheet.get("sheetName") or "ABS Diário",
+        "range": f"A{header_row + 1}:F{len(values)}",
+        "label": "ABS Diário — registros utilizados",
+        "url": source_url
+    }] if source_url else []
+    return {"reply": reply, "sources": sources}
+
 def answer_from_sheets(message, sheets, spreadsheet_url=""):
     """Responde com cálculos estruturados e consultas gerais às abas enviadas pelo Apps Script."""
     question = _normalize_text(message).strip()
@@ -221,6 +322,14 @@ def answer_from_sheets(message, sheets, spreadsheet_url=""):
         "planilha", "aba", "nps", "analista", "equipe", "promotor", "detrator",
         "satisfacao", "monitoria", "coach", "abs", "fora do prazo", "fora prazo"
     ))
+    is_abs_question = any(term in question for term in (
+        "abs", "absenteismo", "absenteismo", "faltas", "faltou", "ausencia", "ausente"
+    ))
+    if is_abs_question:
+        result = _abs_analysis(message, sheets, spreadsheet_url)
+        if result is not None:
+            return result
+
     is_nps_question = any(term in question for term in (
         "nps", "promotor", "detrator", "satisfacao"
     ))
