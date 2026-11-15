@@ -146,7 +146,7 @@ def _nps_analysis(message, sheets, spreadsheet_url=""):
     is_detractors = "detrator" in question
     is_best = any(x in question for x in ("melhor", "maior", "top", "ranking", "lider"))
     is_worst = any(x in question for x in ("pior", "menor", "baixo", "atencao", "precisa"))
-    is_comparison = any(x in question for x in ("compare", "comparacao", "todos", "equipe", "analistas", "ranking"))
+    is_comparison = any(x in question for x in ("compare", "comparacao", "todos", "analistas", "ranking"))
     ordered = sorted(stats.items(), key=lambda pair: pair[1]["nps"], reverse=True)
 
     def label(email):
